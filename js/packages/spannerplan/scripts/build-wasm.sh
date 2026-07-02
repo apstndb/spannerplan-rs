@@ -15,3 +15,6 @@ fi
 cd "$WASM_CRATE"
 "$WASM_PACK" build --target bundler --out-dir "$OUT/wasm"
 "$WASM_PACK" build --target nodejs --out-dir "$OUT/wasm-node"
+# wasm-pack writes .gitignore with "*" in each out dir; npm pack honors it and
+# would omit the .wasm binaries from release tarballs.
+rm -f "$OUT/wasm/.gitignore" "$OUT/wasm-node/.gitignore"

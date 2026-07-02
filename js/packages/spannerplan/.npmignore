@@ -1,0 +1,7 @@
+# Packaging uses package.json "files"; this file disables parent .gitignore
+# so built wasm/ and wasm-node/ outputs are included in the tarball.
+src/
+scripts/
+tests/
+tsconfig.json
+vitest.config.ts

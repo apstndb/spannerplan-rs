@@ -181,6 +181,7 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') }}
           body: |
             ## Install
 
@@ -229,7 +230,7 @@ jobs:
 
       - name: Verify Rust git dependency
         run: |
-          mkdir -p /tmp/spannerplan-consumer
+          mkdir -p /tmp/spannerplan-consumer/src
           cat > /tmp/spannerplan-consumer/Cargo.toml <<'EOF'
           [package]
           name = "consumer"
