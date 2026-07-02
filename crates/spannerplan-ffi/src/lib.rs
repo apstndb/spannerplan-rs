@@ -227,8 +227,12 @@ mod tests {
 
     #[test]
     fn json_entry_point_invalid_mode_sets_error() {
-        let (message, is_error) =
-            call_json(r#"{"planNodes": [{"index": 0}]}"#, "NOT_A_MODE", "CURRENT", None);
+        let (message, is_error) = call_json(
+            r#"{"planNodes": [{"index": 0}]}"#,
+            "NOT_A_MODE",
+            "CURRENT",
+            None,
+        );
         assert_eq!(is_error, 1);
         assert!(!message.is_empty());
     }

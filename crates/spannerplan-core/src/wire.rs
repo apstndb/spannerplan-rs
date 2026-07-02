@@ -284,8 +284,8 @@ mod tests {
             execution_stats: None,
         };
 
-        let wire = encode_result_set_stats_for_test(std::slice::from_ref(&original))
-            .encode_to_vec();
+        let wire =
+            encode_result_set_stats_for_test(std::slice::from_ref(&original)).encode_to_vec();
         let decoded = decode_plan_nodes(&wire).unwrap();
         assert_eq!(decoded, vec![original]);
     }

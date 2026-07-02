@@ -151,8 +151,7 @@ pub fn spannerplan_render_rendertree(input: js_sys::Uint8Array, args: JsValue) -
         let arg_list: Vec<String> = if args.is_undefined() || args.is_null() {
             Vec::new()
         } else {
-            serde_wasm_bindgen::from_value(args)
-                .map_err(|e| format!("decode args: {e}"))?
+            serde_wasm_bindgen::from_value(args).map_err(|e| format!("decode args: {e}"))?
         };
         let arg_refs: Vec<&str> = arg_list.iter().map(String::as_str).collect();
         match spannerplan_cli::run_collecting(&arg_refs, &bytes) {

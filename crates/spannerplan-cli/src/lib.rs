@@ -46,14 +46,8 @@ pub enum RunCollectResult {
 /// Errors from [`run_collecting`]. Usage failures correspond to exit code 2.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RunCollectError {
-    Usage {
-        stderr: String,
-        message: String,
-    },
-    Failed {
-        stderr: String,
-        message: String,
-    },
+    Usage { stderr: String, message: String },
+    Failed { stderr: String, message: String },
 }
 
 impl std::fmt::Display for RunCollectError {
@@ -545,13 +539,7 @@ mod tests {
     fn usage_error_on_unexpected_positional_writes_stderr() {
         let mut stdout = Vec::new();
         let mut stderr = Vec::new();
-        let err = run(
-            &["rendertree"],
-            &[] as &[u8],
-            &mut stdout,
-            &mut stderr,
-        )
-        .unwrap_err();
+        let err = run(&["rendertree"], &[] as &[u8], &mut stdout, &mut stderr).unwrap_err();
         assert!(err.to_string().contains("unexpected argument"));
         assert!(!String::from_utf8_lossy(&stderr).is_empty());
     }
