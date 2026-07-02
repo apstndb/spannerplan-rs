@@ -10,7 +10,7 @@
 //!
 //! Go's `PrintSection`/`PrintPreset` wrappers around the internal
 //! scalarappendix types are 1:1; this port re-exports
-//! [`crate::scalarappendix`]'s [`Section`]/[`Preset`] and parse functions
+//! [`crate::scalarappendix`]'s [`crate::scalarappendix::Section`]/[`crate::scalarappendix::Preset`] and parse functions
 //! directly instead.
 
 use alloc::format;
