@@ -294,7 +294,7 @@ mod tests {
         assert_eq!(
             committed, generated,
             "spannerplan.h is out of date; regenerate with:\n  \
-             cbindgen --crate crates/spannerplan-ffi --lang c --guard SPANNERPLAN_H \
+             cbindgen crates/spannerplan-ffi --config crates/spannerplan-ffi/cbindgen.toml \
              --output crates/spannerplan-ffi/spannerplan.h"
         );
     }

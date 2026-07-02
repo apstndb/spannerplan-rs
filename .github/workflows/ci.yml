@@ -7,11 +7,12 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  SPANNERPLAN_GO_PARITY: "1"
 
 jobs:
   rust:
     runs-on: ubuntu-latest
+    env:
+      SPANNERPLAN_GO_PARITY: "1"
     steps:
       - uses: actions/checkout@v4
 
@@ -42,6 +43,10 @@ jobs:
 
       - name: cargo doc
         run: RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cbindgen@0.29.4
 
       - name: Check committed C header matches cbindgen
         run: bash scripts/check-cbindgen.sh
