@@ -10,6 +10,7 @@ import {
   renderTreeTable,
   renderTreeTableWire,
 } from "../src/index.js";
+import { parsePlanText } from "../src/input-browser.js";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "../../../..");
 
@@ -41,6 +42,14 @@ describe("reference renderer", () => {
     const fromYaml = renderTreeTable(yaml, "PLAN", "CURRENT");
     const fromJson = renderTreeTable(json, "PLAN", "CURRENT");
     expect(fromYaml).toEqual(fromJson);
+  });
+
+  it("host YAML parse matches WASM yaml path (browser slim input)", () => {
+    const yaml = fixture("reference/dca.yaml");
+    const parsed = parsePlanText(yaml);
+    const fromYaml = renderTreeTable(yaml, "PLAN", "CURRENT");
+    const fromHostYaml = renderTreeTable(parsed, "PLAN", "CURRENT");
+    expect(fromHostYaml).toEqual(fromYaml);
   });
 });
 

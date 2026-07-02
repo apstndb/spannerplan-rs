@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>SpannerPlan.Examples</RootNamespace>
+    <UseAppHost>false</UseAppHost>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\bindings\dotnet\src\SpannerPlan\SpannerPlan.csproj" />
+    <PackageReference Include="Google.Cloud.Spanner.V1" Version="5.7.0" />
+  </ItemGroup>
+</Project>

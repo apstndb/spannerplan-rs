@@ -1,10 +1,12 @@
 import type { BytesInput, PlanInput } from "./types.js";
 
 /**
- * Normalize plan input for the WASM reference renderer.
+ * Normalize plan input for the Node.js WASM reference renderer.
  *
- * YAML and JSON text pass through to WASM (`serde_yaml_ng` in the Rust std
+ * YAML and JSON text pass through to full WASM (`serde_yaml_ng` in the Rust std
  * layer). Objects are serialized to JSON; protobuf wire bytes pass through.
+ *
+ * Browser callers use `input-browser.ts` (host YAML parse + slim WASM).
  */
 export function normalizePlanInput(plan: PlanInput): string | Uint8Array {
   if (plan instanceof Uint8Array) {

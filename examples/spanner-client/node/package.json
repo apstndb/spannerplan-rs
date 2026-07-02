@@ -1,0 +1,9 @@
+{
+  "name": "spanner-client-example",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@google-cloud/spanner": "^7.21.0",
+    "@spannerplan/core": "file:../../../js/packages/spannerplan"
+  }
+}

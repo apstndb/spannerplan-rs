@@ -1,0 +1,15 @@
+[package]
+name = "spanner-client-example"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[dependencies]
+spannerplan = { path = "../../../crates/spannerplan", default-features = false, features = ["wire"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+google-cloud-spanner = { version = "0.33.0", features = ["auth"] }
+google-cloud-gax = "0.19"
+google-cloud-googleapis = "0.16"
+prost = "0.13"

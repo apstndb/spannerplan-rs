@@ -12,13 +12,19 @@ publish = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-spannerplan = { path = "../spannerplan" }
-spannerplan-cli = { path = "../spannerplan-cli" }
+spannerplan = { path = "../spannerplan", default-features = false }
+spannerplan-cli = { path = "../spannerplan-cli", optional = true }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 wasm-bindgen = "0.2"
 js-sys = "0.3"
 serde-wasm-bindgen = "0.6"
+
+[features]
+default = []
+yaml = ["spannerplan/yaml"]
+wire = ["spannerplan/wire"]
+cli = ["dep:spannerplan-cli", "yaml"]
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3"

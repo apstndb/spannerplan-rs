@@ -101,5 +101,5 @@ export async function renderTreeTableOrThrow(
 }
 
 export { getBrowserWasm } from "./wasm-browser.js";
-export { normalizePlanInput } from "./input-browser.js";
+export { normalizePlanInput, parsePlanText } from "./input-browser.js";
 export type * from "./types.js";

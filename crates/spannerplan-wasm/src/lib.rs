@@ -4,8 +4,9 @@ use serde::Serialize;
 use spannerplan::core::reference::{
     parse_format, parse_render_mode, render_tree_table_with_config, RenderConfig,
 };
+#[cfg(feature = "wire")]
 use spannerplan::core::wire;
-use spannerplan::extract::extract_plan_nodes;
+use spannerplan::extract_plan_nodes;
 use wasm_bindgen::prelude::*;
 
 #[derive(Debug, Serialize)]
@@ -63,8 +64,15 @@ fn decode_plan_json(plan: JsValue) -> Result<Vec<spannerplan::core::model::PlanN
     }
 
     if js_sys::Uint8Array::instanceof(&plan) {
-        let bytes = js_sys::Uint8Array::new(&plan).to_vec();
-        return wire::decode_plan_nodes(&bytes).map_err(|e| e.to_string());
+        #[cfg(feature = "wire")]
+        {
+            let bytes = js_sys::Uint8Array::new(&plan).to_vec();
+            return wire::decode_plan_nodes(&bytes).map_err(|e| e.to_string());
+        }
+        #[cfg(not(feature = "wire"))]
+        {
+            return Err("wire input requires the wire feature".to_string());
+        }
     }
 
     if plan.is_object() {
@@ -129,6 +137,7 @@ pub fn spannerplan_render_tree_table(args: JsValue) -> JsValue {
     }
 }
 
+#[cfg(feature = "cli")]
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct RendertreeResponse {
@@ -143,6 +152,7 @@ struct RendertreeResponse {
 }
 
 /// `rendertree` CLI rendering: stdin bytes + flag argv → stdout (matches Go/Rust CLI).
+#[cfg(feature = "cli")]
 #[wasm_bindgen(js_name = spannerplanRenderRendertree)]
 pub fn spannerplan_render_rendertree(input: js_sys::Uint8Array, args: JsValue) -> JsValue {
     let result = (|| -> Result<RendertreeResponse, String> {
@@ -205,6 +215,7 @@ pub fn spannerplan_render_rendertree(input: js_sys::Uint8Array, args: JsValue) -
 }
 
 /// Wire-bytes variant for callers that already hold protobuf-encoded plan data.
+#[cfg(feature = "wire")]
 #[wasm_bindgen(js_name = spannerplanRenderTreeTableWire)]
 pub fn spannerplan_render_tree_table_wire(
     plan_wire: js_sys::Uint8Array,

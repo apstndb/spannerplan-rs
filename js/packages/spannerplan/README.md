@@ -11,9 +11,10 @@ shared fixtures.
   platform. Contrast with Python/Java/.NET bindings under [`bindings/`](../../bindings/).
 - **Not a pure-JavaScript renderer** — logic runs in WebAssembly; the npm
   package is a thin TypeScript loader over `wasm-bindgen` glue.
-- **Node vs browser** — Node loads `wasm-node/` (sync init); browsers use
-  `wasm/` via `@spannerplan/core/browser` (async init). Both accept YAML/JSON
-  text, objects, and wire bytes; YAML is parsed in WASM, not in JavaScript.
+- **Node vs browser** — Node loads `wasm-node/` (full: yaml + wire + cli, sync
+  init); browsers use slim `wasm/` via `@spannerplan/core/browser` (wire +
+  JSON renderer, async init). Browser YAML is parsed in JavaScript (`yaml` npm),
+  not in WASM.
 - **Main entry sync/async** — `renderTreeTable` from `@spannerplan/core` returns
   a result synchronously on Node and a `Promise` in browsers. Use
   `@spannerplan/core/browser` when you always want async/await.
@@ -73,10 +74,11 @@ const table = await renderTreeTableOrThrow(yaml, "PLAN", "CURRENT", {
 
 | Environment | YAML | JSON string | JSON object | Protobuf wire (`Uint8Array`) |
 |-------------|------|-------------|-------------|--------------------------------|
-| Node.js     | yes  | yes         | yes         | yes                            |
-| Browser     | yes  | yes         | yes         | yes                            |
+| Node.js     | yes (WASM) | yes     | yes         | yes                            |
+| Browser     | yes (JS `yaml`) | yes | yes    | yes                            |
 
-YAML and JSON text are passed to WASM; parsing uses Rust `serde_yaml_ng`.
+Node passes YAML/JSON text to full WASM (`serde_yaml_ng`). Browser parses
+YAML/JSON text with the `yaml` package, then sends a JSON object to slim WASM.
 
 ### Types
 
@@ -111,8 +113,9 @@ npm run build:wasm -w @spannerplan/core
 ```
 
 Requires [`wasm-pack`](https://rustwasm.github.io/wasm-pack/) and the
-`wasm32-unknown-unknown` Rust target. The script builds both `wasm/` (bundler)
-and `wasm-node/` (Node.js) outputs from `crates/spannerplan-wasm`.
+`wasm32-unknown-unknown` Rust target. The script builds slim `wasm/` (bundler,
+`wire` only) and full `wasm-node/` (`yaml`, `wire`, `cli`) from
+`crates/spannerplan-wasm`. Compare sizes with `scripts/measure-wasm-sizes.sh`.
 
 ## Tests
 

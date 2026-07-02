@@ -70,6 +70,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[cfg(feature = "yaml")]
     fn extracts_plan_nodes_from_result_set_shaped_fixture() {
         let path = concat!(
             env!("CARGO_MANIFEST_DIR"),
@@ -84,6 +85,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "yaml")]
     fn extracts_plan_nodes_from_bare_plan_nodes_shape() {
         let input = br#"{"planNodes": [{"index": 0, "displayName": "Scan"}]}"#;
         let nodes = extract_plan_nodes(input).unwrap();
@@ -92,6 +94,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "yaml")]
     fn extracts_plan_nodes_from_query_plan_shape() {
         let input = br#"{"queryPlan": {"planNodes": [{"index": 0}]}}"#;
         let nodes = extract_plan_nodes(input).unwrap();
@@ -99,6 +102,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "yaml")]
     fn errors_on_unrecognized_shape() {
         let input = br#"{"somethingElse": true}"#;
         let err = extract_plan_nodes(input).unwrap_err();

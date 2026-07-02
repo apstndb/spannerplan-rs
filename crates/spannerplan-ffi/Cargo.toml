@@ -12,7 +12,7 @@ publish = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-spannerplan = { path = "../spannerplan" }
+spannerplan = { path = "../spannerplan", features = ["yaml", "wire"] }
 serde_json.workspace = true
 
 [build-dependencies]

@@ -1,3 +1,4 @@
+/** Slim browser WASM (renderer + wire; no rendertree CLI entry). */
 export interface WasmBindings {
   spannerplanRenderTreeTable(args: unknown[]): unknown;
   spannerplanRenderTreeTableWire(
@@ -5,10 +6,6 @@ export interface WasmBindings {
     mode: string | null | undefined,
     format: string | null | undefined,
     config: unknown,
-  ): unknown;
-  spannerplanRenderRendertree(
-    input: Uint8Array,
-    args: string[],
   ): unknown;
 }
 
@@ -20,7 +17,6 @@ export async function getBrowserWasm(): Promise<WasmBindings> {
     browserBindings = import("../wasm/spannerplan_wasm.js").then((mod) => ({
       spannerplanRenderTreeTable: mod.spannerplanRenderTreeTable,
       spannerplanRenderTreeTableWire: mod.spannerplanRenderTreeTableWire,
-      spannerplanRenderRendertree: mod.spannerplanRenderRendertree,
     }));
   }
   return browserBindings;

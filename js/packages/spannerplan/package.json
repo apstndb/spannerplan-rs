@@ -33,9 +33,11 @@
     "test": "vitest run",
     "prepublishOnly": "npm run build"
   },
+  "dependencies": {
+    "yaml": "^2.8.1"
+  },
   "devDependencies": {
     "@types/node": "^22.15.21",
-    "yaml": "^2.8.1",
     "typescript": "^5.8.3",
     "vitest": "^3.2.4"
   },

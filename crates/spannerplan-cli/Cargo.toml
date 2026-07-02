@@ -17,4 +17,4 @@ name = "rendertree"
 path = "src/main.rs"
 
 [dependencies]
-spannerplan = { path = "../spannerplan" }
+spannerplan = { path = "../spannerplan", features = ["yaml", "wire"] }

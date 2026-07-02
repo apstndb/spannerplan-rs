@@ -12,6 +12,10 @@ Build the native library once from the repo root:
 cargo build -p spannerplan-ffi
 ```
 
+**Spanner client integration** (live `QueryPlan` → wire render, no JSON/YAML):
+[`examples/spanner-client`](../examples/spanner-client). Set `SPANNER_*` env vars locally;
+do not commit `.env`.
+
 Set `SPANNERPLAN_FFI_LIB` to the platform cdylib when auto-detection fails
 (`target/debug/libspannerplan_ffi.dylib`, `.so`, or `spannerplan_ffi.dll`).
 All FFI bindings also honor `SPANNERPLAN_FFI_DIR` (directory containing the

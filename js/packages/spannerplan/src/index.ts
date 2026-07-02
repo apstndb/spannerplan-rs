@@ -1,3 +1,4 @@
+import { normalizePlanInput as normalizePlanInputBrowser } from "./input-browser.js";
 import { normalizePlanInput, normalizeStdinBytes } from "./input.js";
 import type {
   BytesInput,
@@ -98,7 +99,7 @@ async function renderTreeTableBrowser(
   config: RenderConfig,
 ): Promise<RenderResponse> {
   const wasm = await getBrowserWasm();
-  const normalized = normalizePlanInput(plan);
+  const normalized = normalizePlanInputBrowser(plan);
   if (normalized instanceof Uint8Array) {
     const raw = wasm.spannerplanRenderTreeTableWire(
       normalized,

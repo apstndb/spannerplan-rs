@@ -83,9 +83,19 @@ Shared config shape: [`schema/render-config.schema.json`](schema/render-config.s
 
 WASM is built from `crates/spannerplan-wasm` via
 [`scripts/build-wasm.sh`](scripts/build-wasm.sh) or `cd js && npm run build:wasm`.
-`@spannerplan/core` loads `wasm-node/` on Node (sync init) and `wasm/` in
-browsers (async init). Both accept YAML/JSON text, JSON objects, and protobuf
-wire bytes; YAML is parsed in WASM via the Rust `serde_yaml_ng` extract path.
+`@spannerplan/core` loads two artifacts:
+
+| Artifact | Features | Used by |
+|----------|----------|---------|
+| `wasm/` (browser slim) | `wire` only | Bundlers / `@spannerplan/core/browser` |
+| `wasm-node/` (node full) | `yaml`, `wire`, `cli` | Node.js / `renderRendertree` |
+
+Browser builds omit `serde_yaml_ng` and the CLI; YAML text is parsed in
+JavaScript (`yaml` npm) before calling the slim WASM renderer. Node keeps the
+full Rust extract path for YAML stdin and `rendertree` CLI parity.
+
+Both accept JSON objects and protobuf wire bytes (`Uint8Array`). Size matrix:
+`scripts/measure-wasm-sizes.sh`.
 
 | Package | Role |
 |---------|------|

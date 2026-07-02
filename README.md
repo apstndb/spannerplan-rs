@@ -102,6 +102,7 @@ rendertree -mode plan < plan.yaml
 
 | Example | What it shows |
 |---------|----------------|
+| [`examples/spanner-client`](examples/spanner-client) | Spanner client → `QueryPlan` protobuf → spannerplan wire render (Python, Java, Node, Go, .NET, Rust) |
 | [`js/examples/rendertree-web`](js/examples/rendertree-web) | Browser UI: paste or upload YAML/JSON, render with `@spannerplan/core/browser` |
 | [`js/packages/cli`](js/packages/cli) | Node `rendertree` binary (CLI parity with Go/Rust) |
 | [`bindings/cpp`](bindings/cpp) | C++ `rendertree` and `render_example` linked against `spannerplan.h` |
