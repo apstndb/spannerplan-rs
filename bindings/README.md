@@ -61,7 +61,7 @@ JavaScript (`@spannerplan/core` WASM) do not use this cdylib — see
 
 ### Supported native platforms (FFI artifacts)
 
-The [Release FFI](../.github/workflows/release-ffi.yml) workflow builds
+The [Release](../.github/workflows/release.yml) workflow builds
 `spannerplan-ffi` for:
 
 | Artifact | Platform |

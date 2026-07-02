@@ -61,6 +61,26 @@ cargo build -p spannerplan-core --target thumbv7em-none-eabi --no-default-featur
 
 CI runs these checks on every push (see `.github/workflows/ci.yml`).
 
+## Releases
+
+Tagged releases (`v*`) build FFI artifacts per platform, npm tarballs
+(`@spannerplan/core`, `@spannerplan/cli`), and optional crates.io / npmjs.org
+publishes when `CARGO_REGISTRY_TOKEN` / `NPM_TOKEN` secrets are configured.
+See [`.github/workflows/release.yml`](.github/workflows/release.yml).
+
+```bash
+# Rust from git
+spannerplan = { git = "https://github.com/apstndb/spannerplan-rs", tag = "v0.1.0-alpha.1" }
+
+# Python from git (FFI library required)
+pip install "spannerplan @ git+https://github.com/apstndb/spannerplan-rs@v0.1.0-alpha.1#subdirectory=bindings/python"
+
+# JavaScript from release tarball or local build
+npm install ./spannerplan-core-0.1.0-alpha.1.tgz
+```
+
+Smoke-test consumer installs locally: `bash scripts/verify-release-consumers.sh v0.1.0-alpha.1`
+
 ## Repository map
 
 | Path | Contents |

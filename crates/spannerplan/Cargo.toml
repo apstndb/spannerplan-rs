@@ -11,7 +11,7 @@ keywords = ["spanner", "query-plan", "google-cloud"]
 categories = ["parsing"]
 
 [dependencies]
-spannerplan-core = { path = "../spannerplan-core", features = ["serde", "wire"] }
+spannerplan-core = { version = "0.1.0-alpha.1", path = "../spannerplan-core", features = ["serde", "wire"] }
 serde_yaml_ng = "0.10"
 
 [[example]]
