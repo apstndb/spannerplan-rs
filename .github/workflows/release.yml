@@ -94,8 +94,8 @@ jobs:
           npm pack -w @spannerplan/core
           npm pack -w @spannerplan/cli
           mkdir -p ../dist/npm
-          mv packages/spannerplan/spannerplan-core-*.tgz ../dist/npm/
-          mv packages/cli/spannerplan-cli-*.tgz ../dist/npm/
+          mv spannerplan-core-*.tgz ../dist/npm/
+          mv spannerplan-cli-*.tgz ../dist/npm/
 
       - uses: actions/upload-artifact@v4
         with:
