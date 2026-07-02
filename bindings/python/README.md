@@ -7,11 +7,9 @@ ctypes wrapper around `libspannerplan_ffi` from `crates/spannerplan-ffi`.
 - **Not a pure-Python renderer** — all rendering runs in the Rust cdylib; this
   package only loads it via `ctypes`.
 - **Native library required** — build with `cargo build -p spannerplan-ffi` or
-  download a [Release FFI](../../.github/workflows/release-ffi.yml) artifact.
-- **Platform-specific** — ship the matching `.so` / `.dylib` / `.dll` per
-  OS/CPU (Linux x64, macOS arm64/x64, Windows x64 in CI).
-- **PyPI wheels** — layout is documented below but wheel publishing is not yet
-  automated in this repo; use `pip install -e .` locally or bundle the cdylib.
+  download a [GitHub Release](https://github.com/apstndb/spannerplan-rs/releases) FFI artifact.
+- **Install from git** — `pip install "spannerplan @ git+https://github.com/apstndb/spannerplan-rs@TAG#subdirectory=bindings/python"`;
+  see [`DISTRIBUTION.md`](../../DISTRIBUTION.md).
 - **FFI memory** — returned strings are freed via `spannerplan_string_free` in
   the binding; panics in Rust are caught and surfaced as `RenderError`.
 
@@ -46,61 +44,25 @@ The package resolves the native library in this order:
 4. Monorepo checkout: `target/debug` or `target/release` at the repo root
 5. CI artifact directories under the repo root (see below)
 
-## CI artifacts
+## GitHub Releases
 
-The [Release FFI](../../.github/workflows/release-ffi.yml) workflow builds
-`spannerplan-ffi` cdylibs for Linux x64, macOS arm64/x64, and Windows x64 and
-uploads them as GitHub Actions artifacts:
+The [Release](../../.github/workflows/release.yml) workflow attaches
+`spannerplan-ffi` cdylibs for Linux x64, macOS arm64/x64, and Windows x64 to
+each [GitHub Release](https://github.com/apstndb/spannerplan-rs/releases):
 
-| Artifact | Platform |
+| File in release | Platform |
 |---|---|
-| `spannerplan-ffi-linux-x64` | `libspannerplan_ffi.so` |
-| `spannerplan-ffi-macos-arm64` | `libspannerplan_ffi.dylib` |
-| `spannerplan-ffi-macos-x64` | `libspannerplan_ffi.dylib` |
-| `spannerplan-ffi-windows-x64` | `spannerplan_ffi.dll` |
+| `libspannerplan_ffi.so` | Linux x64 |
+| `libspannerplan_ffi.dylib` | macOS (arm64 and x64 builds share the extension) |
+| `spannerplan_ffi.dll` | Windows x64 |
 
-Download artifacts for the current platform and point the bindings at the directory:
+Download for your platform:
 
 ```bash
-gh run download <run-id> -D artifacts
-export SPANNERPLAN_FFI_DIR="$PWD/artifacts/spannerplan-ffi-linux-x64"  # adjust per OS
+gh release download v0.1.0-alpha.1 --repo apstndb/spannerplan-rs \
+  --pattern 'libspannerplan_ffi.dylib'   # or .so / .dll
+export SPANNERPLAN_FFI_DIR="$PWD"
 cd bindings/python && pytest
 ```
 
-Alternatively, after downloading into the default artifact layout at the repo
-root, the package auto-detects `artifacts/spannerplan-ffi-<platform>/`.
-
-## Wheels and manylinux
-
-PyPI distribution ships platform wheels that bundle the prebuilt cdylib. The
-Python code is pure `ctypes`; only the native library is platform-specific.
-
-**Linux (manylinux):** build the cdylib on a manylinux image (or via the Release
-FFI workflow on `ubuntu-latest`), then audit with
-[`auditwheel`](https://github.com/pypa/auditwheel) before bundling into the
-wheel:
-
-```bash
-auditwheel repair dist/spannerplan-*.whl
-```
-
-Target `manylinux_2_28_x86_64` (or newer) for broad pip compatibility on
-glibc-based Linux. musl/Alpine wheels are not produced by the current matrix.
-
-**macOS:** ship separate `macosx_11_0_arm64` and `macosx_10_9_x86_64` wheels (or
-a single arch per wheel). Use the Release FFI macOS artifacts as inputs.
-
-**Windows:** bundle `spannerplan_ffi.dll` from the Windows x64 artifact into a
-`win_amd64` wheel.
-
-Wheel layout (not yet automated in this repo):
-
-```
-src/spannerplan/
-  __init__.py
-  lib/
-    libspannerplan_ffi.so   # platform-specific name per build
-```
-
-`pyproject.toml` includes optional platform classifiers for when wheels are
-published; see `[project.classifiers]`.
+See also [`DISTRIBUTION.md`](../../DISTRIBUTION.md).

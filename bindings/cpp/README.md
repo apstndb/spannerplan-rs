@@ -7,7 +7,8 @@ CMake examples linking `spannerplan.h` and `libspannerplan_ffi`.
 - **Thin C++ wrapper over Rust FFI** — links or loads `libspannerplan_ffi`;
   no C++ rendering implementation.
 - **Native library required** — build with `cargo build -p spannerplan-ffi`
-  or use a [Release FFI](../../.github/workflows/release-ffi.yml) artifact.
+  or use a [GitHub Release](https://github.com/apstndb/spannerplan-rs/releases) artifact.
+  See [`DISTRIBUTION.md`](../../DISTRIBUTION.md).
 - **Platform-specific** — CI builds Linux x64, macOS arm64/x64, Windows x64;
   pass `-DSPANNERPLAN_FFI_LIB=...` or set the env var when CMake cannot find
   `target/debug/`.

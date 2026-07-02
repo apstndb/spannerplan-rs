@@ -4,10 +4,10 @@ Fiddle wrapper around `libspannerplan_ffi` from `crates/spannerplan-ffi`.
 
 ## Requirements & caveats
 
-- **Not a pure-Ruby renderer** — Fiddle loads the Rust cdylib; gem
-  distribution with bundled natives is not yet automated.
+- **Not a pure-Ruby renderer** — Fiddle loads the Rust cdylib. Install from
+  git and pair with a Release FFI artifact; see [`DISTRIBUTION.md`](../../DISTRIBUTION.md).
 - **Native library required** — `cargo build -p spannerplan-ffi` or a
-  [Release FFI](../../.github/workflows/release-ffi.yml) artifact; set
+  [GitHub Release](https://github.com/apstndb/spannerplan-rs/releases) artifact; set
   `SPANNERPLAN_FFI_LIB` or `SPANNERPLAN_FFI_DIR` when auto-detection fails.
 - **Platform-specific** — Linux x64, macOS arm64/x64, Windows x64 in CI.
 - **FFI memory** — `spannerplan_string_free` is called after each render.

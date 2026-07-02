@@ -41,3 +41,23 @@ Wire parity: `testdata/wire/*.bin` (see [`testdata/wire/README.md`](../testdata/
 - [`wasm-pack`](https://rustwasm.github.io/wasm-pack/installer/)
 
 `npm run build:wasm` (via `@spannerplan/core`) compiles `crates/spannerplan-wasm`.
+
+## Using a release (no local Rust build)
+
+Prebuilt packages are attached to [GitHub Releases](https://github.com/apstndb/spannerplan-rs/releases).
+See [`DISTRIBUTION.md`](../DISTRIBUTION.md#javascript--typescript).
+
+```bash
+gh release download v0.1.0-alpha.1 --repo apstndb/spannerplan-rs --pattern 'spannerplan-core*.tgz'
+npm install ./spannerplan-core-0.1.0-alpha.1.tgz
+```
+
+From git (builds WASM from source):
+
+```json
+{
+  "dependencies": {
+    "@spannerplan/core": "github:apstndb/spannerplan-rs#v0.1.0-alpha.1&path:js/packages/spannerplan"
+  }
+}
+```

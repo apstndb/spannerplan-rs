@@ -26,9 +26,26 @@ See also: [ARCHITECTURE.md](../../ARCHITECTURE.md#javascript--wasm-consumption).
 
 ## Install
 
+From a [GitHub Release](https://github.com/apstndb/spannerplan-rs/releases) tarball
+(WASM prebuilt; no Rust toolchain):
+
 ```bash
-npm install @spannerplan/core
+gh release download v0.1.0-alpha.1 --repo apstndb/spannerplan-rs --pattern 'spannerplan-core*.tgz'
+npm install ./spannerplan-core-0.1.0-alpha.1.tgz
 ```
+
+From git (builds WASM from source):
+
+```json
+{
+  "dependencies": {
+    "@spannerplan/core": "github:apstndb/spannerplan-rs#v0.1.0-alpha.1&path:js/packages/spannerplan"
+  }
+}
+```
+
+See [`DISTRIBUTION.md`](../../../DISTRIBUTION.md). This package is not published
+to npmjs.org.
 
 From this monorepo:
 

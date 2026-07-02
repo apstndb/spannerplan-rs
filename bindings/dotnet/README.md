@@ -7,8 +7,8 @@ P/Invoke wrapper around `libspannerplan_ffi` from `crates/spannerplan-ffi`.
 - **Not a pure-.NET renderer** — P/Invoke loads the Rust `spannerplan-ffi`
   cdylib; rendering happens in native code.
 - **Native library required** — `cargo build -p spannerplan-ffi` or a
-  [Release FFI](../../.github/workflows/release-ffi.yml) artifact; NuGet
-  distribution with bundled natives is not yet automated.
+  [GitHub Release](https://github.com/apstndb/spannerplan-rs/releases) FFI artifact.
+  Install the binding from git; see [`DISTRIBUTION.md`](../../DISTRIBUTION.md).
 - **Platform-specific** — Linux x64, macOS arm64/x64, and Windows x64 in CI;
   set `SPANNERPLAN_FFI_LIB` or `SPANNERPLAN_FFI_DIR` when auto-detection fails.
 - **FFI memory** — `spannerplan_string_free` is called after each render;
@@ -52,7 +52,9 @@ dotnet run --project src/SpannerPlan.Cli -mode plan < ../../testdata/reference/d
 Flags: `-mode`, `-format`, `-wrap-width`, `-help`. Exit `2` on flag/usage errors,
 `1` on render failures.
 
-NuGet distribution requires prebuilt native libraries per platform (not yet automated).
+Install from git and download the FFI library from
+[GitHub Releases](https://github.com/apstndb/spannerplan-rs/releases); see
+[`DISTRIBUTION.md`](../../DISTRIBUTION.md).
 
 ## API
 

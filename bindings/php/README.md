@@ -10,7 +10,7 @@ PHP 8+ [FFI](https://www.php.net/manual/en/book.ffi.php) wrapper around
 - **`ffi.enable=true` required** for CLI scripts (e.g.
   `php -d ffi.enable=true ...`); production `php.ini` may restrict FFI.
 - **Native library required** — `cargo build -p spannerplan-ffi` or a
-  [Release FFI](../../.github/workflows/release-ffi.yml) artifact; set
+  [GitHub Release](https://github.com/apstndb/spannerplan-rs/releases) artifact; set
   `SPANNERPLAN_FFI_LIB` or `SPANNERPLAN_FFI_DIR` when auto-detection fails.
 - **Platform-specific** — Linux x64, macOS arm64/x64, Windows x64 in CI.
 - **FFI memory** — `spannerplan_string_free` is called after each render.

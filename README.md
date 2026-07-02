@@ -68,8 +68,8 @@ and git dependencies — not crates.io or npmjs.org. See [`DISTRIBUTION.md`](DIS
 for install instructions per language.
 
 Tagged releases (`v*`) build FFI artifacts per platform and npm tarballs
-(`@spannerplan/core`, `@spannerplan/cli`). Optional [GitHub Packages](DISTRIBUTION.md#optional-github-packages)
-npm publish is available via manual workflow dispatch.
+(`@spannerplan/core`, `@spannerplan/cli`). See [`DISTRIBUTION.md`](DISTRIBUTION.md)
+for full install examples per language.
 
 ```bash
 # Rust from git

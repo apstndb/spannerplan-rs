@@ -4,11 +4,6 @@ on:
   push:
     tags: ["v*"]
   workflow_dispatch:
-    inputs:
-      publish_github_packages:
-        description: Also publish npm tarballs to GitHub Packages (npm.pkg.github.com)
-        type: boolean
-        default: false
 
 env:
   CARGO_TERM_COLOR: always
@@ -106,48 +101,6 @@ jobs:
         with:
           name: npm-packages
           path: dist/npm
-
-  publish-github-packages:
-    needs: js
-    if: >-
-      startsWith(github.ref, 'refs/tags/') &&
-      (github.event_name == 'workflow_dispatch' && inputs.publish_github_packages)
-    runs-on: ubuntu-latest
-    permissions:
-      packages: write
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: npm-packages
-          path: dist/npm
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          registry-url: https://npm.pkg.github.com
-
-      - name: Publish to GitHub Packages
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # GitHub Packages npm requires the scope to match the repo owner.
-          publish_one() {
-            local src="$1" name="$2"
-            local work="$(mktemp -d)"
-            tar xzf "$src" -C "$work"
-            node -e "
-              const fs = require('node:fs');
-              const path = require('node:path');
-              const pkgPath = path.join(process.argv[1], 'package', 'package.json');
-              const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
-              pkg.name = process.argv[2];
-              pkg.publishConfig = { registry: 'https://npm.pkg.github.com' };
-              fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
-            " "$work" "$name"
-            npm publish "$work/package" --access restricted
-          }
-          publish_one dist/npm/spannerplan-core-*.tgz "@apstndb/spannerplan-core"
-          publish_one dist/npm/spannerplan-cli-*.tgz "@apstndb/spannerplan-cli"
 
   release:
     needs: [ffi, js]

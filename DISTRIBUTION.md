@@ -1,11 +1,15 @@
 # Distribution
 
 This project is distributed through **GitHub Releases** and **git dependencies**.
-We do not publish to crates.io, npmjs.org, PyPI, Maven Central, or NuGet for
-now. Official package registries may be added later if discoverability demands
-it.
+We do not publish to crates.io, npmjs.org, PyPI, Maven Central, NuGet, or
+GitHub Packages. Official registries may be added later if discoverability
+demands it.
 
-## Primary channel: GitHub Releases
+Latest release: https://github.com/apstndb/spannerplan-rs/releases
+
+Replace `v0.1.0-alpha.1` below with the tag you want.
+
+## GitHub Releases
 
 Tagged releases (`v*`) attach prebuilt artifacts:
 
@@ -16,31 +20,48 @@ Tagged releases (`v*`) attach prebuilt artifacts:
 | `spannerplan-cli-*.tgz` | `@spannerplan/cli` (`rendertree` npm binary) |
 | `SHA256SUMS.txt` | Integrity verification |
 
-Latest release: https://github.com/apstndb/spannerplan-rs/releases
+Download everything for a tag:
 
-## By language
+```bash
+gh release download v0.1.0-alpha.1 --repo apstndb/spannerplan-rs
+```
 
-### Rust
+Download only the FFI library for your OS (example: macOS arm64):
 
-Git dependency (recommended):
+```bash
+gh release download v0.1.0-alpha.1 --repo apstndb/spannerplan-rs \
+  --pattern 'libspannerplan_ffi.dylib' --pattern 'spannerplan.h'
+export SPANNERPLAN_FFI_DIR="$PWD"
+```
+
+## Rust (git dependency)
+
+Library:
 
 ```toml
 [dependencies]
 spannerplan = { git = "https://github.com/apstndb/spannerplan-rs", tag = "v0.1.0-alpha.1" }
 ```
 
-Binary from source:
+`no_std` core only:
+
+```toml
+[dependencies]
+spannerplan-core = { git = "https://github.com/apstndb/spannerplan-rs", tag = "v0.1.0-alpha.1" }
+```
+
+CLI binary:
 
 ```bash
 cargo install --git https://github.com/apstndb/spannerplan-rs --tag v0.1.0-alpha.1 spannerplan-cli
+rendertree -mode plan < plan.yaml
 ```
 
-Crates are marked `publish = false` in this repo; `cargo publish` is not part
-of the release workflow.
+Crates are marked `publish = false`; releases do not publish to crates.io.
 
-### JavaScript / TypeScript
+## JavaScript / TypeScript
 
-Prebuilt tarball from a release (no Rust toolchain required):
+### From a release tarball (recommended — WASM prebuilt)
 
 ```bash
 gh release download v0.1.0-alpha.1 --repo apstndb/spannerplan-rs --pattern 'spannerplan-core*.tgz'
@@ -57,7 +78,15 @@ npm install ./spannerplan-core-0.1.0-alpha.1.tgz
 }
 ```
 
-Git dependency (builds WASM from source; requires Rust + wasm-pack):
+CLI from release:
+
+```bash
+gh release download v0.1.0-alpha.1 --pattern 'spannerplan-cli*.tgz'
+npm install -g ./spannerplan-cli-0.1.0-alpha.1.tgz
+rendertree -mode plan < plan.yaml
+```
+
+### From git (builds WASM — requires Rust + wasm-pack)
 
 ```json
 {
@@ -67,47 +96,112 @@ Git dependency (builds WASM from source; requires Rust + wasm-pack):
 }
 ```
 
-### FFI bindings (Python, Java, .NET, Ruby, PHP, C++)
+Monorepo / submodule:
 
-1. Install binding source from git (per-language `bindings/*` README).
-2. Download the matching `libspannerplan_ffi.*` from the GitHub Release.
-3. Set `SPANNERPLAN_FFI_LIB` or `SPANNERPLAN_FFI_DIR`.
+```json
+{
+  "dependencies": {
+    "@spannerplan/core": "file:../spannerplan-rs/js/packages/spannerplan"
+  }
+}
+```
 
-Example (Python):
+Run `npm run build -w @spannerplan/core` (or `cd js && npm run build`) after
+checkout.
+
+## FFI bindings
+
+Pattern for all FFI languages:
+
+1. **Source** — clone or install the binding from git (`bindings/<lang>/`).
+2. **Native library** — download `libspannerplan_ffi.*` (+ `spannerplan.h` for C++)
+   from the [GitHub Release](https://github.com/apstndb/spannerplan-rs/releases).
+3. **Point the binding** — `SPANNERPLAN_FFI_LIB` or `SPANNERPLAN_FFI_DIR`.
+
+### Python
 
 ```bash
 pip install "spannerplan @ git+https://github.com/apstndb/spannerplan-rs@v0.1.0-alpha.1#subdirectory=bindings/python"
-export SPANNERPLAN_FFI_LIB=/path/to/libspannerplan_ffi.dylib
+
+gh release download v0.1.0-alpha.1 --pattern 'libspannerplan_ffi.*'
+export SPANNERPLAN_FFI_LIB="$PWD/libspannerplan_ffi.dylib"   # adjust extension
 ```
 
-## Optional: GitHub Packages
-
-For org-internal npm consumers, the Release workflow can publish to
-[GitHub Packages](https://github.com/features/packages) (`npm.pkg.github.com`)
-when triggered manually with **“Also publish npm tarballs to GitHub Packages”**
-enabled.
-
-Published scope: `@apstndb/spannerplan-core`, `@apstndb/spannerplan-cli`
-(GitHub Packages requires the scope to match the repository owner).
+### Java
 
 ```bash
-# .npmrc (consumer)
-@apstndb:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+git clone --depth 1 --branch v0.1.0-alpha.1 https://github.com/apstndb/spannerplan-rs
+cd spannerplan-rs/bindings/java
 
-npm install @apstndb/spannerplan-core@0.1.0-alpha.1
+gh release download v0.1.0-alpha.1 --repo apstndb/spannerplan-rs --pattern 'libspannerplan_ffi.so'
+export SPANNERPLAN_FFI_LIB="$PWD/libspannerplan_ffi.so"
+
+mvn -q test
 ```
 
-Tag-push releases do **not** publish to GitHub Packages automatically; use the
-workflow dispatch checkbox when you need registry hosting in addition to release
-assets.
+Add as a dependency via git submodule + local `mvn install`, or copy
+`bindings/java` into your tree.
+
+### .NET
+
+```bash
+git clone --depth 1 --branch v0.1.0-alpha.1 https://github.com/apstndb/spannerplan-rs
+cd spannerplan-rs
+
+gh release download v0.1.0-alpha.1 --pattern 'spannerplan_ffi.dll'
+export SPANNERPLAN_FFI_LIB="$PWD/spannerplan_ffi.dll"
+
+dotnet test bindings/dotnet/SpannerPlan.sln
+```
+
+Reference `bindings/dotnet/src/SpannerPlan/SpannerPlan.csproj` from your
+solution via project reference.
+
+### Ruby
+
+```bash
+git clone --depth 1 --branch v0.1.0-alpha.1 https://github.com/apstndb/spannerplan-rs
+cd spannerplan-rs/bindings/ruby
+
+gh release download v0.1.0-alpha.1 --repo apstndb/spannerplan-rs --pattern 'libspannerplan_ffi.dylib'
+export SPANNERPLAN_FFI_LIB="$PWD/libspannerplan_ffi.dylib"
+
+gem build spannerplan.gemspec
+gem install ./spannerplan-0.1.0.alpha.1.gem
+```
+
+### PHP
+
+```bash
+git clone --depth 1 --branch v0.1.0-alpha.1 https://github.com/apstndb/spannerplan-rs
+cd spannerplan-rs/bindings/php
+
+gh release download v0.1.0-alpha.1 --repo apstndb/spannerplan-rs --pattern 'libspannerplan_ffi.so'
+export SPANNERPLAN_FFI_LIB="$PWD/libspannerplan_ffi.so"
+
+composer install
+php -d ffi.enable=true test_render.php
+```
+
+### C++
+
+```bash
+git clone --depth 1 --branch v0.1.0-alpha.1 https://github.com/apstndb/spannerplan-rs
+cd spannerplan-rs
+
+gh release download v0.1.0-alpha.1 --pattern 'libspannerplan_ffi.*' --pattern 'spannerplan.h'
+export SPANNERPLAN_FFI_LIB="$PWD/libspannerplan_ffi.dylib"
+
+cmake -S bindings/cpp -B bindings/cpp/build
+cmake --build bindings/cpp/build
+```
 
 ## Verification
 
-After a release, smoke-test consumer installs:
+After a release:
 
 ```bash
 bash scripts/verify-release-consumers.sh v0.1.0-alpha.1
 ```
 
-CI runs a subset of these checks in the Release workflow (`verify-consumers` job).
+CI runs Rust git + Python git checks in the Release workflow (`verify-consumers` job).

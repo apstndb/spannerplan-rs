@@ -7,8 +7,8 @@
 - **Not a pure-Java renderer** — JNA loads the Rust `spannerplan-ffi` cdylib;
   no rendering logic runs in the JVM.
 - **Native library required** — `cargo build -p spannerplan-ffi` or a
-  [Release FFI](../../.github/workflows/release-ffi.yml) artifact; the Maven
-  JAR does not bundle the cdylib.
+  [GitHub Release](https://github.com/apstndb/spannerplan-rs/releases) FFI artifact;
+  the JAR does not bundle the cdylib. See [`DISTRIBUTION.md`](../../DISTRIBUTION.md).
 - **Platform-specific** — provide the matching library for Linux x64, macOS
   arm64/x64, or Windows x64 (CI matrix); other targets need a local build.
 - **JDK 17+**, **Maven 3.9+**.

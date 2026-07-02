@@ -7,9 +7,14 @@ Depends on [`@spannerplan/core`](../spannerplan) (WASM-backed).
 
 ## Install
 
+From a [GitHub Release](https://github.com/apstndb/spannerplan-rs/releases) tarball:
+
 ```bash
-npm install -g @spannerplan/cli
+gh release download v0.1.0-alpha.1 --repo apstndb/spannerplan-rs --pattern 'spannerplan-cli*.tgz'
+npm install -g ./spannerplan-cli-0.1.0-alpha.1.tgz
 ```
+
+See [`DISTRIBUTION.md`](../../../DISTRIBUTION.md). Not published to npmjs.org.
 
 From this monorepo:
 
