@@ -173,10 +173,17 @@ jobs:
           merge-multiple: true
 
       - name: Create checksums
-        working-directory: dist
         run: |
+          cd dist
           find . -type f \( -name '*.so' -o -name '*.dylib' -o -name '*.dll' -o -name '*.tgz' \) \
             -print0 | sort -z | xargs -0 shasum -a 256 > SHA256SUMS.txt
+
+      - name: Recreate release slot (re-tag safe)
+        if: startsWith(github.ref, 'refs/tags/')
+        run: gh release delete "${GITHUB_REF_NAME}" -y || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
 
       - uses: softprops/action-gh-release@v2
         with:
@@ -211,9 +218,7 @@ jobs:
             ```bash
             pip install "spannerplan @ git+https://github.com/apstndb/spannerplan-rs@v0.1.0-alpha.1#subdirectory=bindings/python"
             ```
-          files: |
-            dist/**/*
-            dist/SHA256SUMS.txt
+          files: dist/**/*
 
   verify-consumers:
     needs: release

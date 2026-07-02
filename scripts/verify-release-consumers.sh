@@ -50,7 +50,7 @@ print('ok: python render', len(out), 'bytes')
 
 echo "==> npm tarball from workspace build"
 (cd "$ROOT/js" && npm run build && npm pack -w @spannerplan/core)
-TARBALL="$(ls -1 "$ROOT/js/packages/spannerplan"/spannerplan-core-*.tgz | head -1)"
+TARBALL="$(ls -1 "$ROOT/js"/spannerplan-core-*.tgz | head -1)"
 mkdir -p "$WORK/npm-consumer"
 cat > "$WORK/npm-consumer/package.json" <<EOF
 { "type": "module", "dependencies": { "@spannerplan/core": "file:$TARBALL" } }
