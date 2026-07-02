@@ -28,8 +28,7 @@ npm run preview -w rendertree-web
 
 ## Notes
 
-- YAML is converted to JSON in the page before calling WASM (the core browser
-  entry accepts JSON text or objects).
+- YAML and JSON text are passed to WASM (`serde_yaml_ng` in the Rust std layer).
 - This sample uses the **reference** renderer API (`renderTreeTable`), not the
   full `rendertree` CLI layout. For CLI parity in Node, use
   [`@spannerplan/cli`](../../packages/cli).

@@ -1,57 +1,178 @@
 # spannerplan-rs
 
-Rust port of [apstndb/spannerplan](https://github.com/apstndb/spannerplan): render
-Cloud Spanner query plans as ASCII tables and appendices, with byte-for-byte
-parity against the Go implementation on shared fixtures.
+Render Cloud Spanner query plans as ASCII tables and appendices. Rust port of
+[apstndb/spannerplan](https://github.com/apstndb/spannerplan) with byte-for-byte
+parity against the Go reference on shared fixtures.
 
-## Crates
+Use it as a **library** (Rust, JavaScript, Python, Java, .NET, and more) or as a
+**`rendertree` CLI** (shell, Node, and several FFI sample binaries). Distribution
+is via [GitHub Releases](https://github.com/apstndb/spannerplan-rs/releases) and
+**git dependencies** — not crates.io or npmjs.org. See [`DISTRIBUTION.md`](DISTRIBUTION.md).
 
-| Crate | Role |
-|-------|------|
-| `spannerplan-core` | `no_std` renderer (JSON via optional `serde`, protobuf via `wire`) |
-| `spannerplan` | `std` helpers: YAML/JSON extract, integration tests |
-| `spannerplan-cli` | `rendertree` binary (matches Go CLI table layout) |
-| `spannerplan-ffi` | C ABI (`cdylib`) for JSON and wire inputs |
-| `spannerplan-wasm` | `wasm-bindgen` entry points |
+## Surfaces
 
-JavaScript/TypeScript packages (WASM-backed): [`js/`](js/) (`@spannerplan/core`,
-`@spannerplan/cli`).
+| If you need… | Use |
+|--------------|-----|
+| Rust library / `no_std` embedding | `spannerplan` / `spannerplan-core` ([git dependency](DISTRIBUTION.md#rust-git-dependency)) |
+| Shell / piping | `rendertree` ([Rust CLI](#rust-rendertree-cli) or [Go reference](https://github.com/apstndb/spannerplan)) |
+| JavaScript / TypeScript (Node or browser) | [`@spannerplan/core`](js/packages/spannerplan) (WASM) |
+| Python, Java, .NET, C++, Ruby, PHP | [`bindings/`](bindings/) over the FFI cdylib |
 
-Architecture (layers, bindings, Go vs Rust/JS): [`ARCHITECTURE.md`](ARCHITECTURE.md).
-Specification, parity strategy, and implementation notes: [`DESIGN.md`](DESIGN.md).
+JavaScript uses WASM; FFI languages load a native `libspannerplan_ffi` from a
+[release](https://github.com/apstndb/spannerplan-rs/releases) or a local build.
+Caveats: [`bindings/README.md`](bindings/README.md#ffi-bindings-vs-native-implementations).
 
-Shared config schema (`RenderConfig` for Rust, FFI, WASM, JS, bindings):
-[`schema/render-config.schema.json`](schema/render-config.schema.json) (example:
-[`schema/render-config.example.json`](schema/render-config.example.json)).
+## Install
 
-Fixtures and byte-for-byte goldens: [`testdata/`](testdata/) (provenance in
-[`testdata/README.md`](testdata/README.md)).
+Replace `v0.1.0-alpha.1` with the [release tag](https://github.com/apstndb/spannerplan-rs/releases) you want.
 
-Language bindings (Python, Java, .NET, C++, Ruby, PHP) are FFI wrappers over
-the Rust cdylib — not pure implementations in those languages. Caveats per
-platform: [`bindings/README.md`](bindings/README.md#ffi-bindings-vs-native-implementations).
-JavaScript uses WASM (`@spannerplan/core`); Go is pure Go with no native deps.
+**Rust** — `Cargo.toml`:
+
+```toml
+spannerplan = { git = "https://github.com/apstndb/spannerplan-rs", tag = "v0.1.0-alpha.1" }
+```
+
+**JavaScript** — prebuilt tarball from a release (WASM included):
+
+```bash
+gh release download v0.1.0-alpha.1 --repo apstndb/spannerplan-rs --pattern 'spannerplan-core*.tgz'
+npm install ./spannerplan-core-0.1.0-alpha.1.tgz
+```
+
+**Python** — git + FFI library:
+
+```bash
+pip install "spannerplan @ git+https://github.com/apstndb/spannerplan-rs@v0.1.0-alpha.1#subdirectory=bindings/python"
+export SPANNERPLAN_FFI_LIB=/path/to/libspannerplan_ffi.dylib   # from the release
+```
+
+More languages and detail: [`DISTRIBUTION.md`](DISTRIBUTION.md).
 
 ## Quick start
+
+Sample input: [`testdata/reference/dca.yaml`](testdata/reference/dca.yaml).
+
+### Rust library
+
+```rust
+use spannerplan::extract::extract_plan_nodes;
+use spannerplan::core::reference::{render_tree_table, Format, RenderMode};
+
+let yaml = std::fs::read_to_string("plan.yaml")?;
+let nodes = extract_plan_nodes(yaml.as_bytes())?;
+let table = render_tree_table(&nodes, RenderMode::Plan, Format::Current)?;
+println!("{table}");
+```
+
+### Rust `rendertree` CLI
+
+From a release:
+
+```bash
+cargo install --git https://github.com/apstndb/spannerplan-rs --tag v0.1.0-alpha.1 spannerplan-cli
+rendertree -mode plan < plan.yaml
+```
+
+### Node.js
+
+From a release tarball:
+
+```bash
+gh release download v0.1.0-alpha.1 --pattern 'spannerplan-cli*.tgz'
+npm install -g ./spannerplan-cli-0.1.0-alpha.1.tgz
+rendertree -mode plan < plan.yaml
+```
+
+In application code, `import { renderTreeTable } from "@spannerplan/core"`. See
+[`js/packages/spannerplan/README.md`](js/packages/spannerplan/README.md).
+
+### FFI bindings
+
+Each binding under [`bindings/`](bindings/) has a README. Typical flow: install
+from git, download `libspannerplan_ffi.*` from a release, set `SPANNERPLAN_FFI_LIB`.
+
+```bash
+# Python example
+pip install "spannerplan @ git+https://github.com/apstndb/spannerplan-rs@v0.1.0-alpha.1#subdirectory=bindings/python"
+export SPANNERPLAN_FFI_LIB="$PWD/libspannerplan_ffi.so"
+rendertree -mode plan < plan.yaml
+```
+
+## Examples
+
+| Example | What it shows |
+|---------|----------------|
+| [`js/examples/rendertree-web`](js/examples/rendertree-web) | Browser UI: paste or upload YAML/JSON, render with `@spannerplan/core/browser` |
+| [`js/packages/cli`](js/packages/cli) | Node `rendertree` binary (CLI parity with Go/Rust) |
+| [`bindings/cpp`](bindings/cpp) | C++ `rendertree` and `render_example` linked against `spannerplan.h` |
+| [`bindings/python`](bindings/python) | Python `rendertree` + library API (`render_tree_table_json`) |
+| [`bindings/java`](bindings/java) | Java `Rendertree` main + JNA library |
+| [`bindings/dotnet`](bindings/dotnet) | .NET `SpannerPlan.Cli` sample |
+| [`bindings/ruby`](bindings/ruby) | Ruby `bin/rendertree` |
+| [`bindings/php`](bindings/php) | PHP `bin/rendertree` (requires `ffi.enable`) |
+
+**Browser demo** (`rendertree-web`):
+
+```bash
+cd js && npm install && npm run build -w @spannerplan/core
+npm run dev -w rendertree-web
+# open http://localhost:5173
+```
+
+Or use a release tarball for `@spannerplan/core` instead of building WASM locally
+(see [`js/examples/rendertree-web/README.md`](js/examples/rendertree-web/README.md)).
+
+Full `rendertree` command matrix by language:
+[`bindings/README.md` — samples by language](bindings/README.md#rendertree-samples-by-language).
+
+## Configuration
+
+Shared render options (`wrapWidth`, `printSections`, scalar-var flags, …) are
+described in [`schema/render-config.schema.json`](schema/render-config.schema.json)
+with an example in [`schema/render-config.example.json`](schema/render-config.example.json).
+
+## Further reading
+
+| Document | Contents |
+|----------|----------|
+| [`DISTRIBUTION.md`](DISTRIBUTION.md) | Install from releases and git (all languages) |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | Layers, WASM vs FFI, Go vs Rust/JS |
+| [`bindings/README.md`](bindings/README.md) | FFI bindings and per-language READMEs |
+| [`js/README.md`](js/README.md) | JavaScript workspace overview |
+| [`DESIGN.md`](DESIGN.md) | Algorithm-level porting spec (maintainers) |
+
+---
+
+## For spannerplan-rs developers
+
+### Repository layout
+
+| Path | Contents |
+|------|----------|
+| `crates/spannerplan-core` | `no_std` renderer |
+| `crates/spannerplan` | std YAML/JSON extract |
+| `crates/spannerplan-cli` | `rendertree` binary |
+| `crates/spannerplan-ffi` | C ABI (`cdylib`) |
+| `crates/spannerplan-wasm` | `wasm-bindgen` exports |
+| `js/` | `@spannerplan/core`, `@spannerplan/cli` |
+| `bindings/` | FFI wrappers and sample CLIs |
+| `testdata/` | Fixtures + Go-derived goldens ([`testdata/README.md`](testdata/README.md)) |
+| `lab/genrsgolden/` | Regenerating goldens from Go ([`lab/genrsgolden/README.md`](lab/genrsgolden/README.md)) |
+
+### Build and test
 
 ```bash
 cargo test --workspace
 cargo run -p spannerplan-cli -- -mode plan < testdata/reference/dca.yaml
-```
 
-JavaScript (Node 20+):
-
-```bash
 cd js && npm install && npm run build && npm test
-npx rendertree -mode plan < ../testdata/reference/dca.yaml
 ```
 
-Go CLI parity tests in `spannerplan-cli` shell out to `rendertree` when it is on
-`PATH`; they are skipped locally with a note if the binary is missing. CI sets
-`SPANNERPLAN_GO_PARITY=1`, which makes a missing `rendertree` a hard failure.
+Go CLI parity tests in `spannerplan-cli` shell out to `rendertree` when on `PATH`
+(skipped locally with a note if missing). CI sets `SPANNERPLAN_GO_PARITY=1`.
 Install: `go install github.com/apstndb/spannerplan/cmd/rendertree@v0.1.11`.
 
-## Build gates
+### Build gates
 
 ```bash
 cargo build -p spannerplan-core --no-default-features
@@ -59,41 +180,13 @@ cargo build -p spannerplan-core --target thumbv7em-none-eabi --no-default-featur
 cargo build -p spannerplan-core --target thumbv7em-none-eabi --no-default-features --features wire
 ```
 
-CI runs these checks on every push (see `.github/workflows/ci.yml`).
+CI: [`.github/workflows/ci.yml`](.github/workflows/ci.yml),
+[`.github/workflows/bindings.yml`](.github/workflows/bindings.yml).
 
-## Releases
+### Releases
 
-Distribution is via **[GitHub Releases](https://github.com/apstndb/spannerplan-rs/releases)**
-and git dependencies — not crates.io or npmjs.org. See [`DISTRIBUTION.md`](DISTRIBUTION.md)
-for install instructions per language.
+Tag `v*` triggers [`.github/workflows/release.yml`](.github/workflows/release.yml)
+(FFI artifacts + npm tarballs attached to GitHub Releases). Verify consumer
+installs: `bash scripts/verify-release-consumers.sh v0.1.0-alpha.1`.
 
-Tagged releases (`v*`) build FFI artifacts per platform and npm tarballs
-(`@spannerplan/core`, `@spannerplan/cli`). See [`DISTRIBUTION.md`](DISTRIBUTION.md)
-for full install examples per language.
-
-```bash
-# Rust from git
-spannerplan = { git = "https://github.com/apstndb/spannerplan-rs", tag = "v0.1.0-alpha.1" }
-
-# JavaScript from release tarball
-gh release download v0.1.0-alpha.1 --pattern 'spannerplan-core*.tgz'
-npm install ./spannerplan-core-0.1.0-alpha.1.tgz
-
-# Python from git (FFI library required)
-pip install "spannerplan @ git+https://github.com/apstndb/spannerplan-rs@v0.1.0-alpha.1#subdirectory=bindings/python"
-```
-
-Smoke-test consumer installs: `bash scripts/verify-release-consumers.sh v0.1.0-alpha.1`
-
-## Repository map
-
-| Path | Contents |
-|------|----------|
-| `crates/` | Rust workspace: core, std layer, CLI, FFI, WASM |
-| `js/` | `@spannerplan/core` and `@spannerplan/cli` (WASM-backed) |
-| `bindings/` | FFI wrappers and sample CLIs — [`bindings/README.md`](bindings/README.md) |
-| `schema/` | Shared JSON schemas (`RenderConfig`) |
-| `testdata/` | Input fixtures + Go-derived golden outputs |
-| `proto/` | Vendored `.proto` subset for the `wire` feature |
-| `lab/genrsgolden/` | Docs for regenerating `testdata/golden/` from Go |
-| `DISTRIBUTION.md` | How to consume releases (git + GitHub Releases) |
+Rust crates are `publish = false`; releases do not publish to crates.io.
