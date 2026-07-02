@@ -9,6 +9,7 @@ repository.workspace = true
 readme = "../../README.md"
 keywords = ["spanner", "query-plan", "google-cloud"]
 categories = ["parsing"]
+publish = false
 
 [dependencies]
 spannerplan-core = { version = "0.1.0-alpha.1", path = "../spannerplan-core", features = ["serde", "wire"] }

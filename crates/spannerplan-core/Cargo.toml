@@ -9,6 +9,7 @@ repository.workspace = true
 readme = "../../README.md"
 keywords = ["spanner", "query-plan", "no_std"]
 categories = ["no-std", "parsing"]
+publish = false
 build = "build.rs"
 
 [dependencies]

@@ -4,6 +4,11 @@ on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      publish_github_packages:
+        description: Also publish npm tarballs to GitHub Packages (npm.pkg.github.com)
+        type: boolean
+        default: false
 
 env:
   CARGO_TERM_COLOR: always
@@ -102,40 +107,14 @@ jobs:
           name: npm-packages
           path: dist/npm
 
-  publish-crates:
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: dtolnay/rust-toolchain@stable
-
-      - uses: Swatinem/rust-cache@v2
-
-      - name: Publish spannerplan-core
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: |
-          if [ -z "$CARGO_REGISTRY_TOKEN" ]; then
-            echo "CARGO_REGISTRY_TOKEN not set; skipping crates.io publish"
-            exit 0
-          fi
-          cargo publish -p spannerplan-core --allow-dirty
-
-      - name: Publish spannerplan
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: |
-          if [ -z "$CARGO_REGISTRY_TOKEN" ]; then
-            echo "CARGO_REGISTRY_TOKEN not set; skipping crates.io publish"
-            exit 0
-          fi
-          cargo publish -p spannerplan --allow-dirty
-
-  publish-npm:
+  publish-github-packages:
     needs: js
+    if: >-
+      startsWith(github.ref, 'refs/tags/') &&
+      (github.event_name == 'workflow_dispatch' && inputs.publish_github_packages)
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      packages: write
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -145,18 +124,30 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          registry-url: https://registry.npmjs.org
+          registry-url: https://npm.pkg.github.com
 
-      - name: Publish to npmjs.org (optional)
+      - name: Publish to GitHub Packages
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [ -z "$NODE_AUTH_TOKEN" ]; then
-            echo "NPM_TOKEN not set; npm tarballs are attached to the GitHub Release only"
-            exit 0
-          fi
-          npm publish dist/npm/spannerplan-core-*.tgz --access public --tag alpha
-          npm publish dist/npm/spannerplan-cli-*.tgz --access public --tag alpha
+          # GitHub Packages npm requires the scope to match the repo owner.
+          publish_one() {
+            local src="$1" name="$2"
+            local work="$(mktemp -d)"
+            tar xzf "$src" -C "$work"
+            node -e "
+              const fs = require('node:fs');
+              const path = require('node:path');
+              const pkgPath = path.join(process.argv[1], 'package', 'package.json');
+              const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+              pkg.name = process.argv[2];
+              pkg.publishConfig = { registry: 'https://npm.pkg.github.com' };
+              fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
+            " "$work" "$name"
+            npm publish "$work/package" --access restricted
+          }
+          publish_one dist/npm/spannerplan-core-*.tgz "@apstndb/spannerplan-core"
+          publish_one dist/npm/spannerplan-cli-*.tgz "@apstndb/spannerplan-cli"
 
   release:
     needs: [ffi, js]
@@ -188,33 +179,37 @@ jobs:
           cat > "$NOTES" <<'EOF'
           ## Install
 
+          Distribution is via **GitHub Releases** and **git dependencies** — not
+          crates.io or npmjs.org. See [DISTRIBUTION.md](https://github.com/apstndb/spannerplan-rs/blob/main/DISTRIBUTION.md).
+
           ### Rust
 
           ```toml
-          spannerplan = "0.1.0-alpha.1"
-          # or from git:
-          spannerplan = { git = "https://github.com/apstndb/spannerplan-rs", tag = "v0.1.0-alpha.1" }
+          spannerplan = { git = "https://github.com/apstndb/spannerplan-rs", tag = "TAG" }
           ```
 
           ### JavaScript
 
-          Prebuilt tarballs are attached to this release (`spannerplan-core-*.tgz`, `spannerplan-cli-*.tgz`):
+          Prebuilt tarballs are attached to this release (`spannerplan-core-*.tgz`,
+          `spannerplan-cli-*.tgz`):
 
           ```bash
-          npm install ./spannerplan-core-0.1.0-alpha.1.tgz
+          gh release download TAG --pattern 'spannerplan-core*.tgz'
+          npm install ./spannerplan-core-*.tgz
           ```
 
           ### FFI native library
 
-          Download the platform artifact below and set `SPANNERPLAN_FFI_LIB` or `SPANNERPLAN_FFI_DIR`.
-          See [bindings/README.md](https://github.com/apstndb/spannerplan-rs/blob/main/bindings/README.md).
+          Download the platform artifact below and set `SPANNERPLAN_FFI_LIB` or
+          `SPANNERPLAN_FFI_DIR`. See [bindings/README.md](bindings/README.md).
 
           ### Python
 
           ```bash
-          pip install "spannerplan @ git+https://github.com/apstndb/spannerplan-rs@v0.1.0-alpha.1#subdirectory=bindings/python"
+          pip install "spannerplan @ git+https://github.com/apstndb/spannerplan-rs@TAG#subdirectory=bindings/python"
           ```
           EOF
+          sed -i "s/TAG/${TAG}/g" "$NOTES"
           PRERELEASE_FLAG=""
           if [[ "$TAG" == *alpha* || "$TAG" == *beta* ]]; then
             PRERELEASE_FLAG="--prerelease"
@@ -245,7 +240,7 @@ jobs:
           edition = "2021"
 
           [dependencies]
-          spannerplan = { git = "https://github.com/apstndb/spannerplan-rs", tag = "v0.1.0-alpha.1" }
+          spannerplan = { git = "https://github.com/apstndb/spannerplan-rs", tag = "${{ github.ref_name }}" }
           EOF
           cat > /tmp/spannerplan-consumer/src/main.rs <<'EOF'
           fn main() {
@@ -268,5 +263,5 @@ jobs:
         env:
           SPANNERPLAN_FFI_LIB: ${{ github.workspace }}/target/release/libspannerplan_ffi.so
         run: |
-          pip install "spannerplan @ git+https://github.com/apstndb/spannerplan-rs@v0.1.0-alpha.1#subdirectory=bindings/python"
+          pip install "spannerplan @ git+https://github.com/apstndb/spannerplan-rs@${{ github.ref_name }}#subdirectory=bindings/python"
           python -c "from spannerplan import render_tree_table_json; import pathlib; p=pathlib.Path('testdata/reference/dca.yaml').read_text(); out=render_tree_table_json(p,'PLAN','CURRENT'); assert 'Operator' in out"

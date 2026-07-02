@@ -63,23 +63,27 @@ CI runs these checks on every push (see `.github/workflows/ci.yml`).
 
 ## Releases
 
-Tagged releases (`v*`) build FFI artifacts per platform, npm tarballs
-(`@spannerplan/core`, `@spannerplan/cli`), and optional crates.io / npmjs.org
-publishes when `CARGO_REGISTRY_TOKEN` / `NPM_TOKEN` secrets are configured.
-See [`.github/workflows/release.yml`](.github/workflows/release.yml).
+Distribution is via **[GitHub Releases](https://github.com/apstndb/spannerplan-rs/releases)**
+and git dependencies — not crates.io or npmjs.org. See [`DISTRIBUTION.md`](DISTRIBUTION.md)
+for install instructions per language.
+
+Tagged releases (`v*`) build FFI artifacts per platform and npm tarballs
+(`@spannerplan/core`, `@spannerplan/cli`). Optional [GitHub Packages](DISTRIBUTION.md#optional-github-packages)
+npm publish is available via manual workflow dispatch.
 
 ```bash
 # Rust from git
 spannerplan = { git = "https://github.com/apstndb/spannerplan-rs", tag = "v0.1.0-alpha.1" }
 
+# JavaScript from release tarball
+gh release download v0.1.0-alpha.1 --pattern 'spannerplan-core*.tgz'
+npm install ./spannerplan-core-0.1.0-alpha.1.tgz
+
 # Python from git (FFI library required)
 pip install "spannerplan @ git+https://github.com/apstndb/spannerplan-rs@v0.1.0-alpha.1#subdirectory=bindings/python"
-
-# JavaScript from release tarball or local build
-npm install ./spannerplan-core-0.1.0-alpha.1.tgz
 ```
 
-Smoke-test consumer installs locally: `bash scripts/verify-release-consumers.sh v0.1.0-alpha.1`
+Smoke-test consumer installs: `bash scripts/verify-release-consumers.sh v0.1.0-alpha.1`
 
 ## Repository map
 
@@ -92,3 +96,4 @@ Smoke-test consumer installs locally: `bash scripts/verify-release-consumers.sh 
 | `testdata/` | Input fixtures + Go-derived golden outputs |
 | `proto/` | Vendored `.proto` subset for the `wire` feature |
 | `lab/genrsgolden/` | Docs for regenerating `testdata/golden/` from Go |
+| `DISTRIBUTION.md` | How to consume releases (git + GitHub Releases) |

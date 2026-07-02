@@ -1,7 +1,8 @@
 # Language bindings
 
 FFI wrappers and samples around `crates/spannerplan-ffi` (C ABI) and
-`crates/spannerplan-wasm` (browser/Node). Full `rendertree` CLI parity lives in
+`crates/spannerplan-wasm` (browser/Node). Distribution: [`DISTRIBUTION.md`](../DISTRIBUTION.md)
+(GitHub Releases + git; not crates.io/npm/PyPI). Full `rendertree` CLI parity lives in
 Rust, Go, and `@spannerplan/cli`; other bindings expose the reference renderer
 (JSON/YAML in, ASCII table out) unless noted.
 
@@ -47,12 +48,12 @@ lists only the **FFI** language bindings:
 
 | Binding | Mechanism | Notes |
 |---------|-----------|-------|
-| **Python** | `ctypes` | PyPI wheels not yet published; bundle cdylib locally. |
-| **Java** | JNA | Maven artifact does not bundle the cdylib; set `SPANNERPLAN_FFI_LIB` or `SPANNERPLAN_FFI_DIR`. |
-| **.NET** | P/Invoke | NuGet packaging not yet automated. |
+| **Python** | `ctypes` | Install from git; bundle cdylib from [GitHub Releases](https://github.com/apstndb/spannerplan-rs/releases). |
+| **Java** | JNA | Install from git; set `SPANNERPLAN_FFI_LIB` or `SPANNERPLAN_FFI_DIR`. |
+| **.NET** | P/Invoke | Install from git / project reference; cdylib from GitHub Releases. |
 | **C++** | Direct C ABI (`spannerplan.h`) | Link or load the cdylib at build/runtime. |
-| **Ruby** | Fiddle | `spannerplan.gemspec` present; gem distribution not yet automated. |
-| **PHP** | `FFI` extension | `composer.json` present; requires `ffi.enable=true` (often `php -d ffi.enable=true`). |
+| **Ruby** | Fiddle | `spannerplan.gemspec` present; install from git + GitHub Release cdylib. |
+| **PHP** | `FFI` extension | `composer.json` present; install from git + cdylib; requires `ffi.enable=true`. |
 
 Rust (`spannerplan-core` / `spannerplan-cli`), Go
 ([`apstndb/spannerplan`](https://github.com/apstndb/spannerplan)), and
@@ -61,8 +62,9 @@ JavaScript (`@spannerplan/core` WASM) do not use this cdylib — see
 
 ### Supported native platforms (FFI artifacts)
 
-The [Release](../.github/workflows/release.yml) workflow builds
-`spannerplan-ffi` for:
+The [Release](../.github/workflows/release.yml) workflow publishes
+[GitHub Releases](https://github.com/apstndb/spannerplan-rs/releases) with
+`spannerplan-ffi` builds for:
 
 | Artifact | Platform |
 |----------|----------|
