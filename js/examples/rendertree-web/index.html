@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>rendertree-web</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: system-ui, sans-serif;
+        line-height: 1.4;
+      }
+      body {
+        margin: 0 auto;
+        max-width: 960px;
+        padding: 1.5rem;
+      }
+      h1 {
+        font-size: 1.25rem;
+        margin-top: 0;
+      }
+      label {
+        display: block;
+        margin-bottom: 0.75rem;
+      }
+      textarea,
+      pre {
+        width: 100%;
+        box-sizing: border-box;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.85rem;
+      }
+      textarea {
+        min-height: 12rem;
+      }
+      pre {
+        min-height: 16rem;
+        overflow: auto;
+        white-space: pre-wrap;
+        border: 1px solid color-mix(in srgb, CanvasText 20%, transparent);
+        border-radius: 0.25rem;
+        padding: 0.75rem;
+        margin-top: 0.5rem;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        align-items: center;
+        margin-bottom: 0.75rem;
+      }
+      button {
+        font: inherit;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Spanner query plan renderer</h1>
+    <p>
+      Paste YAML or JSON plan text, or choose a file. Rendering uses
+      <code>@spannerplan/core/browser</code> (WASM).
+    </p>
+
+    <div class="row">
+      <label>
+        Mode
+        <select id="mode">
+          <option value="AUTO">AUTO</option>
+          <option value="PLAN" selected>PLAN</option>
+          <option value="PROFILE">PROFILE</option>
+        </select>
+      </label>
+      <label>
+        Format
+        <select id="format">
+          <option value="CURRENT" selected>CURRENT</option>
+          <option value="TRADITIONAL">TRADITIONAL</option>
+          <option value="COMPACT">COMPACT</option>
+        </select>
+      </label>
+      <label>
+        File
+        <input id="file" type="file" accept=".yaml,.yml,.json,text/*" />
+      </label>
+      <button id="render" type="button">Render</button>
+    </div>
+
+    <label>
+      Plan input
+      <textarea
+        id="input"
+        placeholder="Paste YAML or JSON query plan here..."
+      ></textarea>
+    </label>
+
+    <label>
+      Output
+      <pre id="output">Load a plan and click Render.</pre>
+    </label>
+
+    <script type="module" src="/main.ts"></script>
+  </body>
+</html>

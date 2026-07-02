@@ -1,0 +1,31 @@
+[package]
+name = "spannerplan-core"
+description = "no_std rendering pipeline for Spanner query plans (port of github.com/apstndb/spannerplan)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+readme = "../../README.md"
+keywords = ["spanner", "query-plan", "no_std"]
+categories = ["no-std", "parsing"]
+build = "build.rs"
+
+[dependencies]
+unicode-width = { version = "0.2", default-features = false }
+unicode-segmentation = "1"
+serde = { version = "1", default-features = false, features = ["derive", "alloc"], optional = true }
+prost = { version = "0.14", default-features = false, features = ["derive"], optional = true }
+prost-types = { version = "0.14", default-features = false, optional = true }
+
+[build-dependencies]
+protox = "0.9"
+prost-build = "0.14"
+
+[features]
+default = []
+serde = ["dep:serde"]
+wire = ["dep:prost", "dep:prost-types"]
+
+[dev-dependencies]
+serde_json = "1"

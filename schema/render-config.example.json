@@ -1,0 +1,9 @@
+{
+  "wrapWidth": 80,
+  "hangingIndent": true,
+  "printSections": ["predicates", "ordering"],
+  "showScalarVars": false,
+  "resolveScalarVars": true,
+  "resolveScalarVarsRecursive": false,
+  "disallowUnknownStats": false
+}

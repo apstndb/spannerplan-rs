@@ -1,0 +1,22 @@
+[package]
+name = "spannerplan"
+description = "std convenience layer for spannerplan-core: YAML/JSON input decoding"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+readme = "../../README.md"
+keywords = ["spanner", "query-plan", "google-cloud"]
+categories = ["parsing"]
+
+[dependencies]
+spannerplan-core = { path = "../spannerplan-core", features = ["serde", "wire"] }
+serde_yaml_ng = "0.10"
+
+[[example]]
+name = "gen_wire_fixtures"
+
+[dev-dependencies]
+prost.workspace = true
+serde_json.workspace = true

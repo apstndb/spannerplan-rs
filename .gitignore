@@ -1,0 +1,22 @@
+/target/
+**/*.rs.bk
+
+# JavaScript / WASM (see also js/.gitignore)
+node_modules/
+dist/
+**/wasm/
+**/wasm-node/
+*.tsbuildinfo
+
+# Language binding build outputs
+bindings/**/build/
+bindings/**/bin/
+bindings/**/obj/
+bindings/**/.vs/
+bindings/**/TestResults/
+**/__pycache__/
+*.pyc
+
+# Editor / OS
+.DS_Store
+*.swp

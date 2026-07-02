@@ -1,0 +1,45 @@
+{
+  "name": "@spannerplan/core",
+  "version": "0.1.0",
+  "description": "Render Cloud Spanner query plans as ASCII tables (WASM-backed)",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/apstndb/spannerplan-rs",
+    "directory": "js/packages/spannerplan"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./browser": {
+      "types": "./dist/browser.d.ts",
+      "import": "./dist/browser.js"
+    }
+  },
+  "files": [
+    "dist",
+    "wasm",
+    "wasm-node"
+  ],
+  "scripts": {
+    "build:wasm": "bash scripts/build-wasm.sh",
+    "build": "npm run build:wasm && tsc -p tsconfig.json",
+    "pretest": "npm run build:wasm",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.21",
+    "yaml": "^2.8.1",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

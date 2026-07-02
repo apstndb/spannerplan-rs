@@ -1,0 +1,20 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/spannerplan-core",
+    "crates/spannerplan",
+    "crates/spannerplan-cli",
+    "crates/spannerplan-ffi",
+    "crates/spannerplan-wasm",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.82"
+license = "Apache-2.0"
+repository = "https://github.com/apstndb/spannerplan-rs"
+
+[workspace.dependencies]
+prost = "0.14"
+serde_json = "1"

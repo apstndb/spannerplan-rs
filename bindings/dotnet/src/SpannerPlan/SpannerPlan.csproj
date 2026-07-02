@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>SpannerPlan</RootNamespace>
+    <AssemblyName>SpannerPlan</AssemblyName>
+    <LangVersion>latest</LangVersion>
+    <Description>Render Cloud Spanner query plans as ASCII tables (FFI-backed)</Description>
+    <Authors>apstndb</Authors>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+  </PropertyGroup>
+
+</Project>

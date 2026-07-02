@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/apstndb/spannerplan-rs/schema/render-config.schema.json",
+  "title": "RenderConfig",
+  "description": "Optional rendering options for the reference API (render_tree_table_with_config). Shared across Rust (serde), C FFI (config_json), WASM, TypeScript (@spannerplan/core), and Python bindings. All fields optional; omitted fields use Rust defaults.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "wrapWidth": {
+      "type": "integer",
+      "description": "Maximum total rendered line width including tree prefix. 0 disables wrapping; negative values are rejected.",
+      "default": 0
+    },
+    "hangingIndent": {
+      "type": "boolean",
+      "description": "Hang wrapped continuation lines after node-local prefixes (e.g. [Input]) instead of tree-aligned indentation.",
+      "default": false
+    },
+    "printSections": {
+      "description": "Appendix sections after the table. Omit or null for default (predicates only); [] prints no appendix.",
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "predicates",
+              "ordering",
+              "aggregate",
+              "typed",
+              "full"
+            ]
+          }
+        }
+      ]
+    },
+    "showScalarVars": {
+      "type": "boolean",
+      "description": "Print scalar assignment variable names in semantic appendix sections.",
+      "default": false
+    },
+    "resolveScalarVars": {
+      "type": "boolean",
+      "description": "Replace direct scalar variable aliases in semantic appendix sections.",
+      "default": false
+    },
+    "resolveScalarVarsRecursive": {
+      "type": "boolean",
+      "description": "Recursively resolve scalar variable alias chains in appendix sections.",
+      "default": false
+    },
+    "disallowUnknownStats": {
+      "type": "boolean",
+      "description": "Fail when execution_stats contains unknown keys (Go --disallow-unknown-stats).",
+      "default": false
+    }
+  }
+}

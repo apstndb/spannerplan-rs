@@ -1,0 +1,18 @@
+{
+  "name": "spannerplan-js",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "examples/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w @spannerplan/core && npm run build -w @spannerplan/cli",
+    "build:wasm": "npm run build:wasm -w @spannerplan/core",
+    "dev": "npm run dev -w rendertree-web",
+    "typecheck": "tsc --noEmit -p packages/spannerplan/tsconfig.json && tsc --noEmit -p packages/cli/tsconfig.json",
+    "test": "npm run test -w @spannerplan/core && npm run test -w @spannerplan/cli"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

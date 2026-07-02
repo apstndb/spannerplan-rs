@@ -1,0 +1,19 @@
++-----+-----------------------------------------------------------------------------------------------------------------------+------+-------+---------------+
+| ID  | Operator                                                                                                              | Rows | Exec. | Total Latency |
++-----+-----------------------------------------------------------------------------------------------------------------------+------+-------+---------------+
+|   0 | Distributed Union (distribution_table: AlbumsByAlbumTitle, execution_method: Row, split_ranges_aligned: false)        |      |       |               |
+|  *1 | +- Distributed Cross Apply (execution_method: Row)                                                                    |      |       |               |
+|   2 |    +- [Input] Create Batch (execution_method: Row)                                                                    |      |       |               |
+|   3 |    |  +- Local Distributed Union (execution_method: Row)                                                              |      |       |               |
+|   4 |    |     +- Compute Struct (execution_method: Row)                                                                    |      |       |               |
+|   5 |    |        +- Index Scan (Full scan: true, Index: AlbumsByAlbumTitle, execution_method: Row, scan_method: Automatic) |      |       |               |
+|  11 |    +- [Map] Serialize Result (execution_method: Row)                                                                  |      |       |               |
+|  12 |       +- Cross Apply (execution_method: Row)                                                                          |      |       |               |
+|  13 |          +- [Input] Batch Scan (Batch: $v2, execution_method: Row, scan_method: Row)                                  |      |       |               |
+|  16 |          +- [Map] Local Distributed Union (execution_method: Row)                                                     |      |       |               |
+| *17 |             +- Filter Scan (execution_method: Row, seekable_key_size: 0)                                              |      |       |               |
+|  18 |                +- Index Scan (Full scan: true, Index: SongsBySongGenre, execution_method: Row, scan_method: Row)      |      |       |               |
++-----+-----------------------------------------------------------------------------------------------------------------------+------+-------+---------------+
+Predicates(identified by ID):
+  1: Split Range: ($AlbumId = $AlbumId_1)
+ 17: Residual Condition: ($AlbumId = $batched_AlbumId_1)

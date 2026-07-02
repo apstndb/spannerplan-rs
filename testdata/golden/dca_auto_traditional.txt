@@ -1,0 +1,24 @@
++-----+----------------------------------------------------------------------------------------------------------------+------+-------+---------------+
+| ID  | Operator                                                                                                       | Rows | Exec. | Total Latency |
++-----+----------------------------------------------------------------------------------------------------------------+------+-------+---------------+
+|  *0 | Distributed Union (distribution_table: AlbumsByAlbumTitle, execution_method: Row, split_ranges_aligned: false) |  386 |     1 | 12.25 msecs   |
+|  *1 | +- Distributed Cross Apply (execution_method: Row)                                                             |  386 |     1 | 12.14 msecs   |
+|   2 |    +- [Input] Create Batch (execution_method: Row)                                                             |      |       |               |
+|   3 |    |  +- Local Distributed Union (execution_method: Row)                                                       |  386 |     1 | 1.83 msecs    |
+|   4 |    |     +- Compute Struct (execution_method: Row)                                                             |  386 |     1 | 1.79 msecs    |
+|  *5 |    |        +- Filter Scan (execution_method: Row, seekable_key_size: 1)                                       |  386 |     1 | 1.49 msecs    |
+|  *6 |    |           +- Index Scan (Index: AlbumsByAlbumTitle, execution_method: Row, scan_method: Row)              |  386 |     1 | 1.42 msecs    |
+|  22 |    +- [Map] Serialize Result (execution_method: Row)                                                           |  386 |     1 | 9.62 msecs    |
+|  23 |       +- Cross Apply (execution_method: Row)                                                                   |  386 |     1 | 9.45 msecs    |
+|  24 |          +- [Input] KeyRangeAccumulator (execution_method: Row)                                                |      |       |               |
+|  25 |          |  +- Batch Scan (Batch: $v2, execution_method: Row, scan_method: Row)                                |      |       |               |
+|  29 |          +- [Map] Local Distributed Union (execution_method: Row)                                              |  386 |   386 | 9.16 msecs    |
+|  30 |             +- Filter Scan (execution_method: Row, seekable_key_size: 0)                                       |      |       |               |
+| *31 |                +- Table Scan (Table: Albums, execution_method: Row, scan_method: Row)                          |  386 |   386 | 8.96 msecs    |
++-----+----------------------------------------------------------------------------------------------------------------+------+-------+---------------+
+Predicates(identified by ID):
+  0: Split Range: (STARTS_WITH($AlbumTitle, 'T') AND ($AlbumTitle LIKE 'T%e'))
+  1: Split Range: (($SingerId' = $SingerId) AND ($AlbumId' = $AlbumId))
+  5: Residual Condition: ($AlbumTitle LIKE 'T%e')
+  6: Seek Condition: STARTS_WITH($AlbumTitle, 'T')
+ 31: Seek Condition: (($SingerId' = $batched_SingerId) AND ($AlbumId' = $batched_AlbumId))

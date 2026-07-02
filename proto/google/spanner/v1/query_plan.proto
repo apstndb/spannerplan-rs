@@ -1,0 +1,40 @@
+// Vendored subset of googleapis/google/spanner/v1/query_plan.proto (Apache-2.0).
+// Trimmed to messages needed by spannerplan-rs wire decode.
+syntax = "proto3";
+
+package google.spanner.v1;
+
+import "google/protobuf/struct.proto";
+
+option go_package = "cloud.google.com/go/spanner/apiv1/spannerpb;spannerpb";
+
+message PlanNode {
+  enum Kind {
+    KIND_UNSPECIFIED = 0;
+    RELATIONAL = 1;
+    SCALAR = 2;
+  }
+
+  message ChildLink {
+    int32 child_index = 1;
+    string type = 2;
+    string variable = 3;
+  }
+
+  message ShortRepresentation {
+    string description = 1;
+    map<string, int32> subqueries = 2;
+  }
+
+  int32 index = 1;
+  Kind kind = 2;
+  string display_name = 3;
+  repeated ChildLink child_links = 4;
+  ShortRepresentation short_representation = 5;
+  google.protobuf.Struct metadata = 6;
+  google.protobuf.Struct execution_stats = 7;
+}
+
+message QueryPlan {
+  repeated PlanNode plan_nodes = 1;
+}

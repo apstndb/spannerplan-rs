@@ -1,0 +1,20 @@
+[package]
+name = "spannerplan-cli"
+description = "CLI binaries for spannerplan-rs (rendertree)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+name = "spannerplan_cli"
+path = "src/lib.rs"
+
+[[bin]]
+name = "rendertree"
+path = "src/main.rs"
+
+[dependencies]
+spannerplan = { path = "../spannerplan" }

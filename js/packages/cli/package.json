@@ -1,0 +1,36 @@
+{
+  "name": "@spannerplan/cli",
+  "version": "0.1.0",
+  "description": "rendertree CLI for Cloud Spanner query plans",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/apstndb/spannerplan-rs",
+    "directory": "js/packages/cli"
+  },
+  "type": "module",
+  "bin": {
+    "rendertree": "./bin/rendertree.js"
+  },
+  "files": [
+    "bin",
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "pretest": "npm run build:wasm -w @spannerplan/core",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@spannerplan/core": "0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.21",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,30 @@
++-----+-----------------------------------------------------------------------------+
+| ID  | Operator                                                                    |
++-----+-----------------------------------------------------------------------------+
+|  *0 | Distributed Union on AlbumsByAlbumTitle <Row>                               |
+|  *1 | +- Distributed Cross Apply <Row>                                            |
+|   2 |    +- [Input] Create Batch <Row>                                            |
+|   3 |    |  +- Local Distributed Union <Row>                                      |
+|   4 |    |     +- Compute Struct <Row>                                            |
+|  *5 |    |        +- Filter Scan <Row> (seekable_key_size: 1)                     |
+|  *6 |    |           +- Index Scan on AlbumsByAlbumTitle <Row> (scan_method: Row) |
+|  22 |    +- [Map] Serialize Result <Row>                                          |
+|  23 |       +- Cross Apply <Row>                                                  |
+|  24 |          +- [Input] KeyRangeAccumulator <Row>                               |
+|  25 |          |  +- Batch Scan on $v2 <Row> (scan_method: Row)                   |
+|  29 |          +- [Map] Local Distributed Union <Row>                             |
+|  30 |             +- Filter Scan <Row> (seekable_key_size: 0)                     |
+| *31 |                +- Table Scan on Albums <Row> (scan_method: Row)             |
++-----+-----------------------------------------------------------------------------+
+Node Parameters(identified by ID):
+  0: Split Range: (STARTS_WITH($AlbumTitle, 'T') AND ($AlbumTitle LIKE 'T%e'))
+  1: Split Range: (($SingerId' = $SingerId) AND ($AlbumId' = $AlbumId))
+  2: $v2.Batch=$v1
+  4: $v1.AlbumId=$AlbumId, $v1.AlbumTitle=$AlbumTitle, $v1.SingerId=$SingerId
+  5: Residual Condition: ($AlbumTitle LIKE 'T%e')
+  6: $AlbumId=AlbumId, $AlbumTitle=AlbumTitle, $SingerId=SingerId
+     Seek Condition: STARTS_WITH($AlbumTitle, 'T')
+ 22: $batched_SingerId, $batched_AlbumId, $batched_AlbumTitle, $MarketingBudget
+ 25: $batched_AlbumId=AlbumId, $batched_AlbumTitle=AlbumTitle, $batched_SingerId=SingerId
+ 31: $MarketingBudget=MarketingBudget, $SingerId'=SingerId, $AlbumId'=AlbumId
+     Seek Condition: (($SingerId' = $batched_SingerId) AND ($AlbumId' = $batched_AlbumId))

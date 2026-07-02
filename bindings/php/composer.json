@@ -1,0 +1,22 @@
+{
+  "name": "apstndb/spannerplan",
+  "description": "Render Cloud Spanner query plans as ASCII tables (FFI-backed)",
+  "type": "library",
+  "license": "Apache-2.0",
+  "version": "0.1.0",
+  "require": {
+    "php": ">=8.0",
+    "ext-ffi": "*"
+  },
+  "autoload": {
+    "classmap": [
+      "src/"
+    ]
+  },
+  "bin": [
+    "bin/rendertree"
+  ],
+  "scripts": {
+    "test": "php -d ffi.enable=true test_render.php"
+  }
+}

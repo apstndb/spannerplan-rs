@@ -1,0 +1,119 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+  SPANNERPLAN_GO_PARITY: "1"
+
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Add embedded target
+        run: rustup target add thumbv7em-none-eabi
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Install Go rendertree (CLI parity tests)
+        run: go install github.com/apstndb/spannerplan/cmd/rendertree@v0.1.11
+
+      - name: cargo fmt
+        run: cargo fmt --check
+
+      - name: cargo clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: cargo clippy (spannerplan-core, no default features)
+        run: cargo clippy -p spannerplan-core --no-default-features -- -D warnings
+
+      - name: cargo doc
+        run: RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
+
+      - name: Check committed C header matches cbindgen
+        run: bash scripts/check-cbindgen.sh
+
+      - name: cargo test
+        run: cargo test --workspace
+
+      - name: Build spannerplan-ffi
+        run: cargo build -p spannerplan-ffi
+
+      - name: FFI ctypes smoke test
+        run: python3 crates/spannerplan-ffi/tests/smoke.py
+
+      - name: no_std build (proxy)
+        run: cargo build -p spannerplan-core --no-default-features
+
+      - name: no_std embedded target
+        run: cargo build -p spannerplan-core --target thumbv7em-none-eabi --no-default-features
+
+      - name: no_std + wire on embedded target
+        run: cargo build -p spannerplan-core --target thumbv7em-none-eabi --no-default-features --features wire
+
+  js:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Add wasm32 target
+        run: rustup target add wasm32-unknown-unknown
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: js/package-lock.json
+
+      - name: npm ci
+        working-directory: js
+        run: npm ci
+
+      - name: npm build
+        working-directory: js
+        run: npm run build
+
+      - name: npm typecheck
+        working-directory: js
+        run: npm run typecheck
+
+      - name: rendertree-web build
+        working-directory: js
+        run: npm run build -w rendertree-web
+
+      - name: npm test
+        working-directory: js
+        run: npm test
+
+  msrv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@1.82.0
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: cargo test (MSRV)
+        run: cargo test --workspace

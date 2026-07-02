@@ -1,0 +1,67 @@
+name: Bindings
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  bindings:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build spannerplan-ffi
+        run: cargo build -p spannerplan-ffi
+
+      - name: Export SPANNERPLAN_FFI_LIB
+        run: echo "SPANNERPLAN_FFI_LIB=$PWD/target/debug/libspannerplan_ffi.so" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Python binding tests
+        working-directory: bindings/python
+        run: |
+          pip install -e ".[dev]"
+          pytest
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Java binding tests
+        working-directory: bindings/java
+        run: mvn -q test
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: .NET binding tests
+        working-directory: bindings/dotnet
+        run: dotnet test
+
+      - name: Ruby binding tests
+        working-directory: bindings/ruby
+        run: ruby test/test_render.rb
+
+      - name: PHP binding tests
+        working-directory: bindings/php
+        run: php -d ffi.enable=true test_render.php
+
+      - name: C++ binding tests
+        working-directory: bindings/cpp
+        run: |
+          cmake -S . -B build
+          cmake --build build
+          ctest --test-dir build --output-on-failure
