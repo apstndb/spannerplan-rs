@@ -18,6 +18,37 @@ final class Spannerplan
         $this->ffi = FFI::cdef($header, $libPath);
     }
 
+    public function renderTreeTableWire(
+        string $planWire,
+        string $mode = 'AUTO',
+        string $format = 'CURRENT',
+        ?string $configJson = null
+    ): string {
+        $isError = $this->ffi->new('int');
+        $wire = $this->ffi->new('uint8_t[' . strlen($planWire) . ']');
+        FFI::memcpy($wire, $planWire, strlen($planWire));
+        $out = $this->ffi->spannerplan_render_tree_table_wire(
+            $wire,
+            strlen($planWire),
+            $mode,
+            $format,
+            $configJson,
+            FFI::addr($isError)
+        );
+        if ($out === null) {
+            throw new RuntimeException('native render returned NULL');
+        }
+
+        $text = FFI::string($out);
+        $this->ffi->spannerplan_string_free($out);
+
+        if ($isError->cdata !== 0) {
+            throw new RuntimeException($text);
+        }
+
+        return $text;
+    }
+
     public function renderTreeTableJson(
         string $planJson,
         string $mode = 'AUTO',

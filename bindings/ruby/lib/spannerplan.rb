@@ -61,10 +61,39 @@ module Spannerplan
     extern 'char* spannerplan_render_tree_table_json(const char* plan_json, ' \
            'const char* mode, const char* format, const char* config_json, ' \
            'int* out_is_error)'
+    extern 'char* spannerplan_render_tree_table_wire(void* plan_wire, ' \
+           'size_t plan_wire_len, const char* mode, const char* format, ' \
+           'const char* config_json, int* out_is_error)'
     extern 'void spannerplan_string_free(char* s)'
   end
 
   module_function
+
+  def render_tree_table_wire(plan_wire, mode: 'AUTO', format: 'CURRENT', config: nil)
+    is_error = Fiddle::Pointer.malloc(Fiddle::SIZEOF_INT)
+    is_error[0, Fiddle::SIZEOF_INT] = [0].pack('i')
+    config_json = config ? JSON.generate(config) : nil
+
+    wire = Fiddle::Pointer[plan_wire]
+    out = Native.spannerplan_render_tree_table_wire(
+      wire,
+      plan_wire.bytesize,
+      mode,
+      format,
+      config_json,
+      is_error
+    )
+    raise RenderError, 'native render returned NULL' if out.null?
+
+    text = out.to_s
+    Native.spannerplan_string_free(out)
+    err = is_error[0, Fiddle::SIZEOF_INT].unpack1('i')
+    raise RenderError, text if err != 0
+
+    text
+  ensure
+    is_error&.free
+  end
 
   def render_tree_table_json(plan_json, mode: 'AUTO', format: 'CURRENT', config: nil)
     is_error = Fiddle::Pointer.malloc(Fiddle::SIZEOF_INT)

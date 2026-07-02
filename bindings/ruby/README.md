@@ -11,6 +11,8 @@ Fiddle wrapper around `libspannerplan_ffi` from `crates/spannerplan-ffi`.
   `SPANNERPLAN_FFI_LIB` or `SPANNERPLAN_FFI_DIR` when auto-detection fails.
 - **Platform-specific** — Linux x64, macOS arm64/x64, Windows x64 in CI.
 - **FFI memory** — `spannerplan_string_free` is called after each render.
+- **Wire render** — `Spannerplan.render_tree_table_wire(plan_wire, mode:, format:)` accepts
+  protobuf wire-encoded `QueryPlan` bytes (see `examples/spanner-client/ruby`).
 
 See also: [bindings overview](../README.md#ffi-bindings-vs-native-implementations).
 

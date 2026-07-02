@@ -40,8 +40,9 @@ warnings from `exec:java` (which runs inside Maven's JVM).
 `run-examples.sh` sets `SPANNERPLAN_QUIET_WASM_BUILD=1` for the Node build so
 `wasm-pack` logs are suppressed (`--log-level error` + `cargo --quiet`).
 
-Python/Java dependencies are installed or built once before parallel runs to
-avoid venv / Maven races (e.g. concurrent `pip install -e` into one `.venv`).
+Python/Java/Ruby/PHP dependencies are installed or built once before parallel runs to
+avoid venv / Maven / Bundler / Composer races (e.g. concurrent installs into one
+`.venv` or `vendor/bundle`).
 
 ## Examples
 
@@ -53,6 +54,9 @@ avoid venv / Maven races (e.g. concurrent `pip install -e` into one `.venv`).
 | Go | [`go/`](go/) | `spannerplan-ffi` via cgo |
 | .NET | [`dotnet/`](dotnet/) | `bindings/dotnet` P/Invoke |
 | Rust | [`rust/`](rust/) | `spannerplan` crate (`wire` + `render`) |
+| C++ | [`cpp/`](cpp/) | `spannerplan-ffi` via `spannerplan.h` |
+| Ruby | [`ruby/`](ruby/) | `bindings/ruby` Fiddle (`render_tree_table_wire`) |
+| PHP | [`php/`](php/) | `bindings/php` FFI (`renderTreeTableWire`) |
 
 ## Quick run (Python)
 
@@ -79,6 +83,54 @@ Or run all examples (PLAN + PROFILE, in parallel) on this machine:
 
 ```bash
 ./run-examples.sh
+```
+
+### C++
+
+Requires [google-cloud-cpp](https://github.com/googleapis/google-cloud-cpp) Spanner
+(`find_package(google_cloud_cpp_spanner)`). The example uses a
+[`cpp/vcpkg.json`](cpp/vcpkg.json) manifest (`google-cloud-cpp[spanner]` only) and
+auto-detects vcpkg via [`vcpkg-detect.sh`](vcpkg-detect.sh).
+
+**macOS / Linux — install vcpkg (one-time):**
+
+```bash
+git clone https://github.com/microsoft/vcpkg.git ~/vcpkg
+~/vcpkg/bootstrap-vcpkg.sh
+export VCPKG_ROOT=~/vcpkg   # add to your shell profile
+```
+
+**Build and run** (manifest mode installs `google-cloud-cpp[spanner]` on first
+`cmake` configure; this can take a while):
+
+```bash
+cd cpp && ./run.sh --query-mode PROFILE
+```
+
+`./run.sh` and `run-examples.sh` pick up `VCPKG_ROOT`, `~/vcpkg`, or `vcpkg` on
+`PATH`. Override with `CMAKE_TOOLCHAIN_FILE` if needed.
+
+Without vcpkg, CMake may still succeed if `google-cloud-cpp` is installed
+system-wide. Otherwise the C++ example is skipped in `run-examples.sh`.
+
+### Ruby
+
+Requires Ruby 3.0+ and Bundler matching `Gemfile.lock` (`BUNDLED WITH` — Homebrew
+`bundle` is preferred over the macOS system stub). `run-examples.sh` resolves a
+compatible `bundle` on `PATH` or under `/opt/homebrew/bin`.
+
+```bash
+cd ruby && ./run.sh
+```
+
+### PHP
+
+Requires PHP 8+ with the `ffi` extension. The `grpc` extension is optional (REST
+transport works without it); `composer install` uses
+`--ignore-platform-req=ext-grpc` when needed.
+
+```bash
+cd php && ./run.sh
 ```
 
 Each example prints an ASCII plan table to stdout on success.

@@ -1,0 +1,12 @@
+{
+  "name": "spanner-client-cpp-example",
+  "version-string": "unversioned",
+  "description": "Spanner client C++ example using google-cloud-cpp",
+  "dependencies": [
+    {
+      "name": "google-cloud-cpp",
+      "default-features": false,
+      "features": ["spanner"]
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "name": "io/spannerplan-spanner-client-example",
+  "description": "Fetch QueryPlan via google/cloud-spanner and render with spannerplan FFI",
+  "type": "project",
+  "license": "Apache-2.0",
+  "require": {
+    "php": ">=8.0",
+    "ext-ffi": "*",
+    "google/cloud-spanner": "^1.95"
+  },
+  "autoload": {
+    "files": [
+      "cli_options.php",
+      "spanner_adapter.php"
+    ]
+  }
+}

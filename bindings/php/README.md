@@ -14,6 +14,8 @@ PHP 8+ [FFI](https://www.php.net/manual/en/book.ffi.php) wrapper around
   `SPANNERPLAN_FFI_LIB` or `SPANNERPLAN_FFI_DIR` when auto-detection fails.
 - **Platform-specific** — Linux x64, macOS arm64/x64, Windows x64 in CI.
 - **FFI memory** — `spannerplan_string_free` is called after each render.
+- **Wire render** — `renderTreeTableWire($planWire, $mode, $format)` accepts protobuf
+  wire-encoded `QueryPlan` bytes (see `examples/spanner-client/php`).
 
 See also: [bindings overview](../README.md#ffi-bindings-vs-native-implementations).
 

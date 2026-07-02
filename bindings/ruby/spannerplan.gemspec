@@ -11,6 +11,8 @@ Gem::Specification.new do |s|
   s.homepage = 'https://github.com/apstndb/spannerplan-rs'
   s.required_ruby_version = '>= 3.0'
 
+  s.add_dependency 'fiddle'
+
   s.files = Dir['lib/**/*.rb', 'bin/rendertree', 'README.md']
   s.require_paths = ['lib']
   s.executables = ['rendertree']

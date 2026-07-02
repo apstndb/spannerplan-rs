@@ -56,8 +56,8 @@ lists only the **FFI** language bindings:
 | **Java** | JNA | Install from git; set `SPANNERPLAN_FFI_LIB` or `SPANNERPLAN_FFI_DIR`. |
 | **.NET** | P/Invoke | Install from git / project reference; cdylib from GitHub Releases. |
 | **C++** | Direct C ABI (`spannerplan.h`) | Link or load the cdylib at build/runtime. |
-| **Ruby** | Fiddle | `spannerplan.gemspec` present; install from git + GitHub Release cdylib. |
-| **PHP** | `FFI` extension | `composer.json` present; install from git + cdylib; requires `ffi.enable=true`. |
+| **Ruby** | Fiddle | `spannerplan.gemspec` present; install from git + GitHub Release cdylib. Wire render via `render_tree_table_wire`. |
+| **PHP** | `FFI` extension | `composer.json` present; install from git + cdylib; requires `ffi.enable=true`. Wire render via `renderTreeTableWire`. |
 
 Rust (`spannerplan-core` / `spannerplan-cli`), Go
 ([`apstndb/spannerplan`](https://github.com/apstndb/spannerplan)), and

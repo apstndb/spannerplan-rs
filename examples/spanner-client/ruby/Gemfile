@@ -1,0 +1,4 @@
+source 'https://rubygems.org'
+
+gem 'google-cloud-spanner', '~> 2.36'
+gem 'spannerplan', path: '../../../bindings/ruby'

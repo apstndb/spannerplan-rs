@@ -7,6 +7,8 @@ service-account*.json
 __pycache__/
 *.pyc
 .venv/
+vendor/bundle/
+vendor/
 node_modules/
 bin/
 obj/
