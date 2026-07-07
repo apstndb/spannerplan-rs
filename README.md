@@ -171,7 +171,7 @@ cd js && npm install && npm run build && npm test
 
 Go CLI parity tests in `spannerplan-cli` shell out to `rendertree` when on `PATH`
 (skipped locally with a note if missing). CI sets `SPANNERPLAN_GO_PARITY=1`.
-Install: `go install github.com/apstndb/spannerplan/cmd/rendertree@v0.1.11`.
+Install: `go install github.com/apstndb/spannerplan/cmd/rendertree@v0.2.0`.
 
 ### Build gates
 

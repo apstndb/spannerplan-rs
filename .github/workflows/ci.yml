@@ -30,7 +30,7 @@ jobs:
           go-version: stable
 
       - name: Install Go rendertree (CLI parity tests)
-        run: go install github.com/apstndb/spannerplan/cmd/rendertree@v0.1.11
+        run: go install github.com/apstndb/spannerplan/cmd/rendertree@v0.2.0
 
       - name: cargo fmt
         run: cargo fmt --check
