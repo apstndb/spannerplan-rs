@@ -1,0 +1,99 @@
+name: Parity drift canary
+
+# Non-blocking governance check. Runs the Go CLI parity tests against the
+# floating `spannerplan@latest` tag to catch upstream rendering drift early.
+# This workflow is intentionally NOT a required check: it never runs on push
+# or pull_request, only on a weekly schedule (plus manual dispatch), and its
+# only side effect on failure is an uploaded log artifact and a tracking issue.
+on:
+  schedule:
+    # Mondays at 06:00 UTC.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+# Minimal permissions: read the repo to build/test, write issues to file drift.
+permissions:
+  contents: read
+  issues: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  parity:
+    runs-on: ubuntu-latest
+    env:
+      SPANNERPLAN_GO_PARITY: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Install Go rendertree @latest (parity target)
+        run: go install github.com/apstndb/spannerplan/cmd/rendertree@latest
+
+      - name: Record installed rendertree version
+        run: go version -m "$(command -v rendertree)" | grep -E '^\s+mod\s' | tee rendertree-version.txt
+
+      - name: Run parity tests against spannerplan@latest
+        id: parity
+        # The default GitHub Actions bash shell runs with `-eo pipefail`, so a
+        # cargo failure propagates through `tee` and fails this step.
+        run: cargo test --workspace 2>&1 | tee parity-output.txt
+
+      - name: Upload parity test output
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parity-output
+          path: |
+            parity-output.txt
+            rendertree-version.txt
+
+      - name: Open or update drift tracking issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          title="Parity drift against spannerplan@latest"
+          body=$(cat <<EOF
+          The scheduled parity canary failed: the Rust renderer no longer matches
+          Go \`spannerplan/cmd/rendertree@latest\` on the shared fixtures.
+
+          This usually means upstream \`apstndb/spannerplan\` changed its rendering
+          output. Investigate the diff and, if the change is intentional, port it
+          to the Rust core, regenerate goldens (see \`lab/genrsgolden/README.md\`),
+          and bump the pinned Go parity version in \`.github/workflows/ci.yml\`.
+
+          - Failing run: ${RUN_URL}
+          - Full test log and installed \`@latest\` version are attached as the
+            \`parity-output\` artifact on that run.
+
+          This issue is updated by the canary; a new comment is added on each
+          subsequent failure while it stays open.
+          EOF
+          )
+
+          # Guard against duplicates: reuse the single open issue with this exact
+          # title instead of opening a new one on every weekly failure.
+          existing=$(gh issue list \
+            --state open \
+            --search "\"${title}\" in:title" \
+            --json number,title \
+            --jq "map(select(.title == \"${title}\")) | .[0].number // empty")
+
+          if [ -n "${existing}" ]; then
+            echo "Updating existing issue #${existing}"
+            gh issue comment "${existing}" --body "${body}"
+          else
+            echo "Creating new drift issue"
+            gh issue create --title "${title}" --body "${body}"
+          fi

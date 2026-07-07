@@ -14,7 +14,8 @@ Input fixtures and golden expected outputs for byte-for-byte parity with
 | `wire/` | Rust `gen_wire_fixtures` example | Protobuf `QueryPlan` bytes for wire-path tests |
 
 Fixtures under `reference/` and `rendertree/` are copied verbatim from the Go
-repo (Apache-2.0).
+repo (Apache-2.0). Per-tree source refs, sync dates, and regeneration commands
+are recorded in [`PROVENANCE.md`](PROVENANCE.md).
 
 ## Fixture ↔ golden prefix ↔ stats
 

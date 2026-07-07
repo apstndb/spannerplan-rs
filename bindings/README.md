@@ -102,7 +102,7 @@ Layer cake and binding overview: [`ARCHITECTURE.md`](../ARCHITECTURE.md).
 | Language | Path | How to run |
 |----------|------|------------|
 | **Rust** | `crates/spannerplan-cli` | `cargo run -p spannerplan-cli -- -mode plan < testdata/reference/dca.yaml` |
-| **Go** | [apstndb/spannerplan `cmd/rendertree`](https://github.com/apstndb/spannerplan/tree/main/cmd/rendertree) | `go install github.com/apstndb/spannerplan/cmd/rendertree@v0.1.11` then `rendertree -mode plan < testdata/reference/dca.yaml` |
+| **Go** | [apstndb/spannerplan `cmd/rendertree`](https://github.com/apstndb/spannerplan/tree/main/cmd/rendertree) | `go install github.com/apstndb/spannerplan/cmd/rendertree@v0.2.0` then `rendertree -mode plan < testdata/reference/dca.yaml` |
 | **Node.js** | `js/packages/cli` | `cd js && npm install && npm run build && npx rendertree -mode plan < ../testdata/reference/dca.yaml` |
 | **Browser** | `js/examples/rendertree-web` | `cd js && npm install && npm run build -w @spannerplan/core && npm run dev -w rendertree-web` |
 | **C++** | `bindings/cpp` | `cmake -S bindings/cpp -B bindings/cpp/build && cmake --build bindings/cpp/build && bindings/cpp/build/rendertree -mode plan < testdata/reference/dca.yaml` |
