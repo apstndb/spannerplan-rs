@@ -27,6 +27,7 @@ byte-identical to the upstream tree at that tag on the last-synced date.
 git clone --depth 1 --branch v0.2.0 https://github.com/apstndb/spannerplan.git
 cp spannerplan/plantree/reference/testdata/*.yaml       testdata/reference/
 cp spannerplan/cmd/rendertree/impl/testdata/*.yaml      testdata/rendertree/
+rm -rf spannerplan
 ```
 
 ### `golden/` (machine-generated expected output)
