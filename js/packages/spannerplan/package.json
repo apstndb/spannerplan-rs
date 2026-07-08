@@ -1,6 +1,7 @@
 {
   "name": "@spannerplan/core",
   "version": "0.1.0-alpha.1",
+  "private": true,
   "description": "Render Cloud Spanner query plans as ASCII tables (WASM-backed)",
   "license": "Apache-2.0",
   "repository": {
