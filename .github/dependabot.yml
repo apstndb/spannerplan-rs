@@ -1,0 +1,33 @@
+version: 2
+# cooldown is a Dependabot version-update option. It does not delay security updates.
+updates:
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 3
+    groups:
+      cargo:
+        patterns:
+          - "*"
+  - package-ecosystem: "npm"
+    directory: "/js"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 3
+    groups:
+      npm:
+        patterns:
+          - "*"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    cooldown:
+      default-days: 3
+    groups:
+      github-actions:
+        patterns:
+          - "*"
