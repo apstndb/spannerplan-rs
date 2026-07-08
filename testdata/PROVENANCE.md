@@ -11,12 +11,12 @@ Upstream reference implementation:
 
 | Directory | Origin | Upstream path | Ref / version | Last synced |
 |-----------|--------|---------------|---------------|-------------|
-| `reference/` | Copied verbatim from Go repo | `plantree/reference/testdata/` | `v0.2.0` | 2026-07-08 |
-| `rendertree/` | Copied verbatim from Go repo | `cmd/rendertree/impl/testdata/` | `v0.2.0` | 2026-07-08 |
-| `golden/` | Machine-generated from Go repo | rendered via `lab/genrsgolden` | `v0.2.0` | 2026-07-08 |
+| `reference/` | Copied verbatim from Go repo | `plantree/reference/testdata/` | `v0.2.1` | 2026-07-08 |
+| `rendertree/` | Copied verbatim from Go repo | `cmd/rendertree/impl/testdata/` | `v0.2.1` | 2026-07-08 |
+| `golden/` | Machine-generated from Go repo | rendered via `lab/genrsgolden` | `v0.2.1` | 2026-07-08 |
 | `wire/` | Generated in this repo (Rust) | derived from `reference/*.yaml` | this repo | 2026-07-08 |
 
-The `v0.2.0` fixture copies under `reference/` and `rendertree/` were verified
+The `v0.2.1` fixture copies under `reference/` and `rendertree/` were verified
 byte-identical to the upstream tree at that tag on the last-synced date.
 
 ## Regenerating each tree
@@ -24,7 +24,7 @@ byte-identical to the upstream tree at that tag on the last-synced date.
 ### `reference/` and `rendertree/` (verbatim copies)
 
 ```bash
-git clone --depth 1 --branch v0.2.0 https://github.com/apstndb/spannerplan.git
+git clone --depth 1 --branch v0.2.1 https://github.com/apstndb/spannerplan.git
 cp spannerplan/plantree/reference/testdata/*.yaml       testdata/reference/
 cp spannerplan/cmd/rendertree/impl/testdata/*.yaml      testdata/rendertree/
 rm -rf spannerplan
