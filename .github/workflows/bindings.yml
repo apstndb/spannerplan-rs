@@ -12,7 +12,7 @@ jobs:
   bindings:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -24,7 +24,7 @@ jobs:
       - name: Export SPANNERPLAN_FFI_LIB
         run: echo "SPANNERPLAN_FFI_LIB=$PWD/target/debug/libspannerplan_ffi.so" >> "$GITHUB_ENV"
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -34,7 +34,7 @@ jobs:
           pip install -e ".[dev]"
           pytest
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
@@ -43,7 +43,7 @@ jobs:
         working-directory: bindings/java
         run: mvn -q test
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "8.0.x"
 
