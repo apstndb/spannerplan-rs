@@ -71,6 +71,20 @@ updates:
         applies-to: security-updates
         patterns:
           - "*"
+  - package-ecosystem: "gomod"
+    directory: "/lab/genstructuredgolden"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 3
+    groups:
+      structured-golden-generator:
+        patterns:
+          - "*"
+      structured-golden-generator-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
