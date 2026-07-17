@@ -166,8 +166,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="${{ github.ref_name }}"
-          EXISTING_RELEASE_IDS="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/releases?per_page=100" \
-            --jq ".[] | select(.tag_name == \"${TAG}\") | .id")"
+          EXISTING_RELEASE_IDS="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/releases?per_page=100" | \
+            jq -rs --arg tag "$TAG" '.[][] | select(.tag_name == $tag) | .id')"
           if [[ -n "$EXISTING_RELEASE_IDS" ]]; then
             echo "GitHub release $TAG already exists; refusing to delete/recreate it" >&2
             exit 1
@@ -215,8 +215,8 @@ jobs:
           mapfile -t ASSETS < <(find dist -type f | sort)
           gh release create "$TAG" "${ASSETS[@]}" --title "$TAG" --notes-file "$NOTES" \
             --draft $PRERELEASE_FLAG
-          RELEASE_ID="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/releases?per_page=100" \
-            --jq ".[] | select(.tag_name == \"${TAG}\") | .id")"
+          RELEASE_ID="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/releases?per_page=100" | \
+            jq -rs --arg tag "$TAG" '.[][] | select(.tag_name == $tag) | .id')"
           if [[ "$(printf '%s\n' "$RELEASE_ID" | sed '/^$/d' | wc -l | tr -d ' ')" != "1" ]]; then
             echo "expected exactly one GitHub Release for $TAG" >&2
             exit 1

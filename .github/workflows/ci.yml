@@ -20,6 +20,9 @@ jobs:
       - name: Verify draft-release REST asset downloader
         run: bash scripts/test-download-release-assets.sh
 
+      - name: Verify safe draft-release tag lookup
+        run: bash scripts/test-release-workflow.sh
+
   rust:
     runs-on: ubuntu-latest
     env:
