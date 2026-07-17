@@ -10,7 +10,7 @@ env:
 
 jobs:
   ffi:
-    name: FFI ${{ matrix.artifact_name }}
+    name: FFI ${{ matrix.rust_target }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -19,19 +19,19 @@ jobs:
           - os: ubuntu-latest
             rust_target: x86_64-unknown-linux-gnu
             lib_name: libspannerplan_ffi.so
-            artifact_name: spannerplan-ffi-linux-x64
+            archive_ext: tar.gz
           - os: macos-14
             rust_target: aarch64-apple-darwin
             lib_name: libspannerplan_ffi.dylib
-            artifact_name: spannerplan-ffi-macos-arm64
+            archive_ext: tar.gz
           - os: macos-14
             rust_target: x86_64-apple-darwin
             lib_name: libspannerplan_ffi.dylib
-            artifact_name: spannerplan-ffi-macos-x64
+            archive_ext: tar.gz
           - os: windows-latest
             rust_target: x86_64-pc-windows-msvc
             lib_name: spannerplan_ffi.dll
-            artifact_name: spannerplan-ffi-windows-x64
+            archive_ext: zip
 
     steps:
       - uses: actions/checkout@v4
@@ -48,15 +48,24 @@ jobs:
       - name: Stage library
         shell: bash
         run: |
-          mkdir -p "dist/${{ matrix.artifact_name }}"
-          cp "target/${{ matrix.rust_target }}/release/${{ matrix.lib_name }}" \
-            "dist/${{ matrix.artifact_name }}/${{ matrix.lib_name }}"
-          cp crates/spannerplan-ffi/spannerplan.h "dist/${{ matrix.artifact_name }}/spannerplan.h"
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          STAGE="$RUNNER_TEMP/spannerplan-ffi-stage"
+          mkdir -p "$STAGE" dist
+          cp "target/${{ matrix.rust_target }}/release/${{ matrix.lib_name }}" "$STAGE/${{ matrix.lib_name }}"
+          cp crates/spannerplan-ffi/spannerplan.h "$STAGE/spannerplan.h"
+          cp LICENSE "$STAGE/LICENSE"
+          ARCHIVE="dist/spannerplan-ffi-${VERSION}-${{ matrix.rust_target }}.${{ matrix.archive_ext }}"
+          if [[ "${{ matrix.archive_ext }}" == "zip" ]]; then
+            (cd "$STAGE" && 7z a -tzip "$GITHUB_WORKSPACE/$ARCHIVE" "${{ matrix.lib_name }}" spannerplan.h LICENSE)
+          else
+            tar -czf "$ARCHIVE" -C "$STAGE" "${{ matrix.lib_name }}" spannerplan.h LICENSE
+          fi
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact_name }}
-          path: dist/${{ matrix.artifact_name }}
+          name: spannerplan-ffi-${{ matrix.rust_target }}
+          path: dist/spannerplan-ffi-*${{ matrix.rust_target }}.${{ matrix.archive_ext }}
 
   js:
     runs-on: ubuntu-latest
@@ -116,18 +125,29 @@ jobs:
           path: dist
           merge-multiple: true
 
+      - name: Flatten release assets
+        run: |
+          set -euo pipefail
+          find dist -mindepth 2 -type f \( -name 'spannerplan-ffi-*.tar.gz' -o -name 'spannerplan-ffi-*.zip' -o -name 'spannerplan-*.tgz' \) -print0 |
+            while IFS= read -r -d '' asset; do
+              mv "$asset" "dist/$(basename "$asset")"
+            done
+
       - name: Create checksums
         run: |
           cd dist
-          find . -type f \( -name '*.so' -o -name '*.dylib' -o -name '*.dll' -o -name '*.tgz' \) \
-            -print0 | sort -z | xargs -0 shasum -a 256 > SHA256SUMS.txt
+          find . -maxdepth 1 -type f \( -name 'spannerplan-ffi-*.tar.gz' -o -name 'spannerplan-ffi-*.zip' -o -name 'spannerplan-*.tgz' \) \
+            -print | sed 's#^./##' | sort | while IFS= read -r asset; do shasum -a 256 "$asset"; done > SHA256SUMS.txt
 
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="${{ github.ref_name }}"
-          gh release delete "$TAG" -y 2>/dev/null || true
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "GitHub release $TAG already exists; refusing to delete/recreate it" >&2
+            exit 1
+          fi
           NOTES="$(mktemp)"
           cat > "$NOTES" <<'EOF'
           ## Install
@@ -153,8 +173,9 @@ jobs:
 
           ### FFI native library
 
-          Download the platform artifact below and set `SPANNERPLAN_FFI_LIB` or
-          `SPANNERPLAN_FFI_DIR`. See [bindings/README.md](bindings/README.md).
+          Download the versioned target-triple FFI archive for your platform,
+          extract it, and set `SPANNERPLAN_FFI_LIB` or `SPANNERPLAN_FFI_DIR`.
+          See [bindings/README.md](bindings/README.md).
 
           ### Python
 
@@ -209,12 +230,46 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Build FFI for binding smoke test
-        run: cargo build -p spannerplan-ffi --release
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: js/package-lock.json
 
-      - name: Verify Python git install
+      - name: Download and verify published assets
         env:
-          SPANNERPLAN_FFI_LIB: ${{ github.workspace }}/target/release/libspannerplan_ffi.so
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          mkdir -p "$RUNNER_TEMP/release-assets"
+          gh release download "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" \
+            --dir "$RUNNER_TEMP/release-assets" --clobber \
+            --pattern 'SHA256SUMS.txt' \
+            --pattern 'spannerplan-ffi-*.tar.gz' \
+            --pattern 'spannerplan-ffi-*.zip' \
+            --pattern "spannerplan-core-${VERSION}.tgz" \
+            --pattern "spannerplan-cli-${VERSION}.tgz"
+          (cd "$RUNNER_TEMP/release-assets" && sha256sum -c SHA256SUMS.txt)
+          mkdir -p "$RUNNER_TEMP/release-assets/ffi"
+          tar -xzf "$RUNNER_TEMP/release-assets/spannerplan-ffi-${VERSION}-x86_64-unknown-linux-gnu.tar.gz" \
+            -C "$RUNNER_TEMP/release-assets/ffi"
+          test -s "$RUNNER_TEMP/release-assets/ffi/libspannerplan_ffi.so"
+
+      - name: Verify Python git install with published FFI archive
+        env:
+          SPANNERPLAN_FFI_LIB: ${{ runner.temp }}/release-assets/ffi/libspannerplan_ffi.so
         run: |
           pip install "spannerplan @ git+https://github.com/apstndb/spannerplan-rs@${{ github.ref_name }}#subdirectory=bindings/python"
           python -c "from spannerplan import render_tree_table_json; import pathlib; p=pathlib.Path('testdata/reference/dca.yaml').read_text(); out=render_tree_table_json(p,'PLAN','CURRENT'); assert 'Operator' in out"
+
+      - name: npm ci
+        working-directory: js
+        run: npm ci
+
+      - name: Verify published npm packages and browser API
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          SPANNERPLAN_CORE_TARBALL="$RUNNER_TEMP/release-assets/spannerplan-core-${VERSION}.tgz" \
+          SPANNERPLAN_CLI_TARBALL="$RUNNER_TEMP/release-assets/spannerplan-cli-${VERSION}.tgz" \
+          bash scripts/verify-release-js-tarballs.sh

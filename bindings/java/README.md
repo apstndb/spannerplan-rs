@@ -15,6 +15,11 @@
 - **FFI memory** — JNA frees render outputs via `spannerplan_string_free`;
   Rust panics are caught at the boundary and returned as error strings.
 
+Release FFI assets are versioned target-triple archives rather than loose
+libraries. Extract the matching archive before setting `SPANNERPLAN_FFI_LIB`
+or `SPANNERPLAN_FFI_DIR`; archives include the natural library filename,
+`spannerplan.h`, and `LICENSE`.
+
 See also: [bindings overview](../README.md#ffi-bindings-vs-native-implementations).
 
 ## Local development
@@ -30,7 +35,7 @@ mvn test
 
 If `SPANNERPLAN_FFI_LIB` is unset, the binding looks for `SPANNERPLAN_FFI_DIR`,
 then `target/{debug,release}/libspannerplan_ffi.{dylib,so,dll}` under the
-monorepo root, then downloaded Release FFI artifacts under `artifacts/`.
+monorepo root, then extracted Release FFI archives.
 
 ## API
 

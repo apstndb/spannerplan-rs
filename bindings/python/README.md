@@ -13,6 +13,11 @@ ctypes wrapper around `libspannerplan_ffi` from `crates/spannerplan-ffi`.
 - **FFI memory** — returned strings are freed via `spannerplan_string_free` in
   the binding; panics in Rust are caught and surfaced as `RenderError`.
 
+Release FFI assets are versioned target-triple archives, not loose files.
+Extract the matching `spannerplan-ffi-<version>-<target-triple>.tar.gz` (or
+Windows `.zip`) and point `SPANNERPLAN_FFI_LIB`/`SPANNERPLAN_FFI_DIR` at its
+contents; the archive also includes `spannerplan.h` and `LICENSE`.
+
 See also: [bindings overview](../README.md#ffi-bindings-vs-native-implementations).
 
 ## Local development
@@ -39,28 +44,30 @@ Flags: `-mode`, `-print`, `-compact`, `-wrap-width`, `-h` (usage errors exit 2).
 The package resolves the native library in this order:
 
 1. `SPANNERPLAN_FFI_LIB` — absolute path to the cdylib
-2. `SPANNERPLAN_FFI_DIR` — directory containing the platform library (CI artifacts, local staging)
+2. `SPANNERPLAN_FFI_DIR` — directory containing the platform library (extracted release archive or local staging)
 3. Bundled wheel layout: `spannerplan/lib/<lib>` next to the package
 4. Monorepo checkout: `target/debug` or `target/release` at the repo root
-5. CI artifact directories under the repo root (see below)
+5. Legacy CI artifact directories under the repo root (compatibility only)
 
 ## GitHub Releases
 
-The [Release](../../.github/workflows/release.yml) workflow attaches
-`spannerplan-ffi` cdylibs for Linux x64, macOS arm64/x64, and Windows x64 to
+The [Release](../../.github/workflows/release.yml) workflow attaches versioned
+`spannerplan-ffi` target-triple archives for Linux x64, macOS arm64/x64, and Windows x64 to
 each [GitHub Release](https://github.com/apstndb/spannerplan-rs/releases):
 
 | File in release | Platform |
 |---|---|
-| `libspannerplan_ffi.so` | Linux x64 |
-| `libspannerplan_ffi.dylib` | macOS (arm64 and x64 builds share the extension) |
-| `spannerplan_ffi.dll` | Windows x64 |
+| `spannerplan-ffi-<version>-x86_64-unknown-linux-gnu.tar.gz` | Linux x64 |
+| `spannerplan-ffi-<version>-aarch64-apple-darwin.tar.gz` | macOS arm64 |
+| `spannerplan-ffi-<version>-x86_64-apple-darwin.tar.gz` | macOS x64 |
+| `spannerplan-ffi-<version>-x86_64-pc-windows-msvc.zip` | Windows x64 |
 
 Download for your platform:
 
 ```bash
 gh release download v0.1.0-alpha.2 --repo apstndb/spannerplan-rs \
-  --pattern 'libspannerplan_ffi.dylib'   # or .so / .dll
+  --pattern 'spannerplan-ffi-0.1.0-alpha.2-aarch64-apple-darwin.tar.gz'
+tar -xzf spannerplan-ffi-0.1.0-alpha.2-aarch64-apple-darwin.tar.gz
 export SPANNERPLAN_FFI_DIR="$PWD"
 cd bindings/python && pytest
 ```

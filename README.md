@@ -19,6 +19,7 @@ is via [GitHub Releases](https://github.com/apstndb/spannerplan-rs/releases) and
 | Python, Java, .NET, C++, Ruby, PHP | [`bindings/`](bindings/) over the FFI cdylib |
 
 JavaScript uses WASM; FFI languages load a native `libspannerplan_ffi` from a
+versioned target-triple archive in a
 [release](https://github.com/apstndb/spannerplan-rs/releases) or a local build.
 Caveats: [`bindings/README.md`](bindings/README.md#ffi-bindings-vs-native-implementations).
 
@@ -43,10 +44,16 @@ npm install ./spannerplan-core-0.1.0-alpha.2.tgz
 
 ```bash
 pip install "spannerplan @ git+https://github.com/apstndb/spannerplan-rs@v0.1.0-alpha.2#subdirectory=bindings/python"
-export SPANNERPLAN_FFI_LIB=/path/to/libspannerplan_ffi.dylib   # from the release
+gh release download v0.1.0-alpha.2 --pattern \
+  'spannerplan-ffi-0.1.0-alpha.2-aarch64-apple-darwin.tar.gz'
+tar -xzf spannerplan-ffi-0.1.0-alpha.2-aarch64-apple-darwin.tar.gz
+export SPANNERPLAN_FFI_LIB="$PWD/libspannerplan_ffi.dylib"
 ```
 
 More languages and detail: [`DISTRIBUTION.md`](DISTRIBUTION.md).
+
+Release FFI archives supersede the alpha.1 loose library/header layout; use
+the versioned target-triple archive and extract it before configuring a binding.
 
 ## Quick start
 
@@ -93,7 +100,9 @@ In application code, `import { renderTreeTable } from "@spannerplan/core"`. See
 ### FFI bindings
 
 Each binding under [`bindings/`](bindings/) has a README. Typical flow: install
-from git, download `libspannerplan_ffi.*` from a release, set `SPANNERPLAN_FFI_LIB`.
+from git, download and extract the matching
+`spannerplan-ffi-<version>-<target-triple>` archive, then set
+`SPANNERPLAN_FFI_LIB`.
 
 ```bash
 # Python example
@@ -191,7 +200,7 @@ CI: [`.github/workflows/ci.yml`](.github/workflows/ci.yml),
 ### Releases
 
 Tag `v*` triggers [`.github/workflows/release.yml`](.github/workflows/release.yml)
-(FFI artifacts + npm tarballs attached to GitHub Releases). Verify consumer
+(versioned FFI archives + npm tarballs attached to GitHub Releases). Verify consumer
 installs: `bash scripts/verify-release-consumers.sh v0.1.0-alpha.2`.
 
 Rust crates are `publish = false`; releases do not publish to crates.io.

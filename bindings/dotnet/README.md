@@ -14,6 +14,11 @@ P/Invoke wrapper around `libspannerplan_ffi` from `crates/spannerplan-ffi`.
 - **FFI memory** — `spannerplan_string_free` is called after each render;
   Rust panics are caught and surfaced as `RenderError`.
 
+Release FFI assets are versioned target-triple archives rather than loose
+libraries. Extract the matching archive before setting `SPANNERPLAN_FFI_LIB`
+or `SPANNERPLAN_FFI_DIR`; archives include the natural library filename,
+`spannerplan.h`, and `LICENSE`.
+
 See also: [bindings overview](../README.md#ffi-bindings-vs-native-implementations).
 
 ## Local development
