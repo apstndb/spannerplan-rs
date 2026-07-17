@@ -17,6 +17,9 @@ jobs:
       - name: Verify stock macOS checksum selection
         run: bash scripts/test-verify-release-checksums.sh shasum
 
+      - name: Verify draft-release REST asset downloader
+        run: bash scripts/test-download-release-assets.sh
+
   rust:
     runs-on: ubuntu-latest
     env:
