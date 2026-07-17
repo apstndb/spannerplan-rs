@@ -25,4 +25,4 @@ mkdir -p "$WORK/consumer"
 (cd "$WORK/consumer" && npm install --offline --cache "$WORK/install-cache" --ignore-scripts "$core_tarball" "$cli_tarball")
 rendered="$WORK/rendered.txt"
 "$WORK/consumer/node_modules/.bin/rendertree" -mode plan <"$REPO_ROOT/testdata/reference/dca.yaml" >"$rendered"
-rg -q 'Operator' "$rendered"
+grep -q 'Operator' "$rendered"
