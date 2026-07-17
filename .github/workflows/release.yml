@@ -9,8 +9,22 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  verify-version:
+    name: Verify release version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Match tag to package versions
+        run: bash scripts/verify-release-version.sh "${GITHUB_REF_NAME}"
+
   ffi:
     name: FFI ${{ matrix.rust_target }}
+    needs: verify-version
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -68,6 +82,7 @@ jobs:
           path: dist/spannerplan-ffi-*${{ matrix.rust_target }}.${{ matrix.archive_ext }}
 
   js:
+    needs: verify-version
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -237,7 +252,7 @@ jobs:
           cache: npm
           cache-dependency-path: js/package-lock.json
 
-      - name: Download and verify published assets
+      - name: Download and verify draft assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -257,7 +272,7 @@ jobs:
             -C "$RUNNER_TEMP/release-assets/ffi"
           test -s "$RUNNER_TEMP/release-assets/ffi/libspannerplan_ffi.so"
 
-      - name: Verify Python git install with published FFI archive
+      - name: Verify Python git install with draft FFI archive
         env:
           SPANNERPLAN_FFI_LIB: ${{ runner.temp }}/release-assets/ffi/libspannerplan_ffi.so
         run: |
@@ -268,26 +283,9 @@ jobs:
         working-directory: js
         run: npm ci
 
-      - name: Verify published npm packages and browser API
+      - name: Verify draft npm packages and browser API
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           SPANNERPLAN_CORE_TARBALL="$RUNNER_TEMP/release-assets/spannerplan-core-${VERSION}.tgz" \
           SPANNERPLAN_CLI_TARBALL="$RUNNER_TEMP/release-assets/spannerplan-cli-${VERSION}.tgz" \
           bash scripts/verify-release-js-tarballs.sh
-
-  publish-release:
-    needs: verify-consumers
-    if: startsWith(github.ref, 'refs/tags/')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Publish verified GitHub Release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          TAG="${GITHUB_REF_NAME}"
-          test "$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)" = true
-          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false
-          test "$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)" = false
