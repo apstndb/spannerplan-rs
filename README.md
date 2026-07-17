@@ -182,9 +182,17 @@ cargo run -p spannerplan-cli -- -mode plan < testdata/reference/dca.yaml
 cd js && npm install && npm run build && npm test
 ```
 
-Go CLI parity tests in `spannerplan-cli` shell out to `rendertree` when on `PATH`
-(skipped locally with a note if missing). CI sets `SPANNERPLAN_GO_PARITY=1`.
-Install: `go install github.com/apstndb/spannerplan/cmd/rendertree@v0.2.1`.
+Go CLI parity tests in `spannerplan-cli` use only the binary named by
+`SPANNERPLAN_GO_RENDERTREE`; they never trust a same-named executable on
+`PATH`. The tests skip locally when the variable is unset. CI additionally
+sets `SPANNERPLAN_GO_PARITY=1`, making a missing explicit binary an error.
+For a local run:
+
+```bash
+go_bin_dir="$(mktemp -d)"
+GOBIN="$go_bin_dir" go install github.com/apstndb/spannerplan/cmd/rendertree@v0.2.1
+SPANNERPLAN_GO_RENDERTREE="$go_bin_dir/rendertree" cargo test -p spannerplan-cli
+```
 
 ### Build gates
 

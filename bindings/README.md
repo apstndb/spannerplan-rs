@@ -21,6 +21,8 @@ Set `SPANNERPLAN_FFI_LIB` to the platform cdylib when auto-detection fails
 Release downloads are versioned target-triple archives; extract the archive
 before setting the variable. Each archive contains the natural library name,
 `spannerplan.h`, and `LICENSE`.
+The C ABI is prerelease and version-pinned: use the header and native library
+from the same archive. ABI compatibility is not promised between alpha tags.
 All FFI bindings also honor `SPANNERPLAN_FFI_DIR` (directory containing the
 platform library). After extracting a Release FFI archive, pass that directory
 explicitly; local compatibility auto-detection may also inspect

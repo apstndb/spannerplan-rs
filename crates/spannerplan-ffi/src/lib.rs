@@ -316,10 +316,11 @@ mod tests {
         let crate_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         let committed =
             std::fs::read_to_string(crate_dir.join("spannerplan.h")).expect("read spannerplan.h");
+        let config = cbindgen::Config::from_file(crate_dir.join("cbindgen.toml"))
+            .expect("read cbindgen configuration");
         let bindings = cbindgen::Builder::new()
             .with_crate(crate_dir)
-            .with_language(cbindgen::Language::C)
-            .with_include_guard("SPANNERPLAN_H")
+            .with_config(config)
             .generate()
             .expect("generate C header");
         let mut generated = Vec::new();

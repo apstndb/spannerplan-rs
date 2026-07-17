@@ -19,4 +19,8 @@ and language bindings. Omitted fields use Rust defaults. See
 configuration. It is an internal contract between a checksum-pinned viewer and
 its bundled renderer, not a stable external API. Success is
 `{contractVersion: 2, rows}`; each row carries occurrence identity independent
-of the Spanner `nodeId`.
+of the Spanner `nodeId`. The schema is a strict writer specification: its
+`additionalProperties: false` rules describe exactly what this bundled renderer
+emits. The TypeScript runtime parser is intentionally a forward reader: it
+validates the required revision-2 fields and ignores unknown additive fields so
+a co-pinned viewer can tolerate a newer renderer during controlled rollout.

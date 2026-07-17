@@ -296,6 +296,9 @@ fn parse_args<E: Write>(args: &[&str], stderr: &mut E) -> Result<Option<ParsedAr
             "-compact" | "--compact" => compact = parse_bool_flag(value)?,
             "-inline-stats" | "--inline-stats" => {
                 let _ = parse_bool_flag(value)?;
+                return Err(usage_error(
+                    "--inline-stats is not implemented in spannerplan-rs (see DESIGN.md §12)",
+                ));
             }
             "-wrap-width" | "--wrap-width" => {
                 let s = value_or_next(value, args, &mut i, "-wrap-width")?;
@@ -454,7 +457,7 @@ fn print_usage<E: Write>(stderr: &mut E) {
     writeln!(stderr, "Usage of rendertree:").ok();
     writeln!(
         stderr,
-        "  -compact\n    \tEnable compact format\n  -disallow-unknown-stats\n    \terror on unknown stats field\n  -execution-method string\n    \tFormat execution method metadata: 'angle' or 'raw' (default: angle)\n  -hanging-indent\n    \tEnable hanging indent for wrapped lines after node-local prefixes such as [Input] and [Map]\n  -help\n    \tShow this help message\n  -inline-stats\n    \tEnable inline stats\n  -known-flag string\n    \tFormat known flags: 'label' or 'raw' (default: label)\n  -mode string\n    \tPROFILE, PLAN, AUTO(ignore case) (default \"AUTO\")\n  -print string\n    \tprint appendix preset (basic, enhanced, full, none; empty value suppresses appendices) or comma-separated sections (predicates, ordering, aggregate, typed, full); presets are standalone; typed/full cannot be combined (default \"basic\")\n  -resolve-vars\n    \tEXPERIMENTAL: resolve scalar variable aliases in semantic appendix sections\n  -resolve-vars-recursive\n    \tEXPERIMENTAL: recursively resolve scalar variable aliases in semantic appendix sections\n  -show-vars\n    \tshow scalar variable assignments in semantic appendix sections\n  -target-metadata string\n    \tFormat target metadata: 'on' or 'raw' (default: on)\n  -wrap-width int\n    \tNumber of characters at which to wrap the Operator column content. 0 means no wrapping. (default 0)"
+        "  -compact\n    \tEnable compact format\n  -disallow-unknown-stats\n    \terror on unknown stats field\n  -execution-method string\n    \tFormat execution method metadata: 'angle' or 'raw' (default: angle)\n  -hanging-indent\n    \tEnable hanging indent for wrapped lines after node-local prefixes such as [Input] and [Map]\n  -help\n    \tShow this help message\n  -known-flag string\n    \tFormat known flags: 'label' or 'raw' (default: label)\n  -mode string\n    \tPROFILE, PLAN, AUTO(ignore case) (default \"AUTO\")\n  -print string\n    \tprint appendix preset (basic, enhanced, full, none; empty value suppresses appendices) or comma-separated sections (predicates, ordering, aggregate, typed, full); presets are standalone; typed/full cannot be combined (default \"basic\")\n  -resolve-vars\n    \tEXPERIMENTAL: resolve scalar variable aliases in semantic appendix sections\n  -resolve-vars-recursive\n    \tEXPERIMENTAL: recursively resolve scalar variable aliases in semantic appendix sections\n  -show-vars\n    \tshow scalar variable assignments in semantic appendix sections\n  -target-metadata string\n    \tFormat target metadata: 'on' or 'raw' (default: on)\n  -wrap-width int\n    \tNumber of characters at which to wrap the Operator column content. 0 means no wrapping. (default 0)"
     )
     .ok();
 }
@@ -488,6 +491,29 @@ mod tests {
             .to_string()
             .contains("flag provided but not defined: -unknown"));
         assert!(String::from_utf8_lossy(&stderr).contains("Usage of rendertree:"));
+    }
+
+    #[test]
+    fn inline_stats_is_rejected_instead_of_ignored() {
+        for args in [
+            ["--inline-stats"].as_slice(),
+            ["--inline-stats=true"].as_slice(),
+            ["--inline-stats=false"].as_slice(),
+        ] {
+            let mut stdout = Vec::new();
+            let mut stderr = Vec::new();
+            let err = run(args, &[] as &[u8], &mut stdout, &mut stderr).unwrap_err();
+            assert!(err
+                .to_string()
+                .contains("--inline-stats is not implemented"));
+            assert!(stdout.is_empty());
+            assert!(stderr.is_empty());
+        }
+
+        let mut stdout = Vec::new();
+        let mut stderr = Vec::new();
+        run(&["--help"], &[] as &[u8], &mut stdout, &mut stderr).unwrap();
+        assert!(!String::from_utf8_lossy(&stderr).contains("-inline-stats"));
     }
 
     #[test]
@@ -574,7 +600,19 @@ mod tests {
         use std::io::Write;
         use std::process::{Command, Stdio};
 
-        let mut child = match Command::new("rendertree")
+        let binary = match std::env::var_os("SPANNERPLAN_GO_RENDERTREE") {
+            Some(binary) => binary,
+            None if std::env::var("SPANNERPLAN_GO_PARITY").is_ok() => {
+                panic!("SPANNERPLAN_GO_RENDERTREE must name the Go rendertree binary when SPANNERPLAN_GO_PARITY is set")
+            }
+            None => {
+                eprintln!(
+                    "note: skipping Go CLI parity test (SPANNERPLAN_GO_RENDERTREE is not set)"
+                );
+                return None;
+            }
+        };
+        let mut child = match Command::new(&binary)
             .args(args)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -582,14 +620,10 @@ mod tests {
             .spawn()
         {
             Ok(child) => child,
-            Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
-                if std::env::var("SPANNERPLAN_GO_PARITY").is_ok() {
-                    panic!("rendertree must be on PATH when SPANNERPLAN_GO_PARITY is set: {err}");
-                }
-                eprintln!("note: skipping Go CLI parity test (rendertree not on PATH)");
-                return None;
-            }
-            Err(err) => panic!("failed to spawn rendertree: {err}"),
+            Err(err) => panic!(
+                "failed to spawn Go rendertree at {}: {err}",
+                std::path::Path::new(&binary).display()
+            ),
         };
         child.stdin.take().unwrap().write_all(input).unwrap();
         let output = child.wait_with_output().unwrap();

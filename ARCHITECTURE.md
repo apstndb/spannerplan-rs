@@ -54,7 +54,7 @@ on shared fixtures (`testdata/`).
 | Consumer need | Binding | Why |
 |---------------|---------|-----|
 | Rust library / embedded | `spannerplan-core` or `spannerplan` | Native, `no_std`-capable, no FFI overhead. |
-| C, Python, Ruby, Java, .NET, PHP, C++ | [`bindings/`](bindings/) → `spannerplan-ffi` | Stable C ABI; ship a `.so`/`.dylib`/`.dll`. |
+| C, Python, Ruby, Java, .NET, PHP, C++ | [`bindings/`](bindings/) → `spannerplan-ffi` | Prerelease, version-pinned C ABI; ship the matching `.so`/`.dylib`/`.dll` and header from one release archive. |
 | JavaScript / TypeScript | `spannerplan-wasm` → `@spannerplan/core` | Portable `.wasm`; no native compile per platform. |
 | Shell / ops | `spannerplan-cli` or Go `rendertree` | stdin/flags; easy piping. |
 

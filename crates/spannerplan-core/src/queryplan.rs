@@ -251,24 +251,26 @@ impl QueryPlan {
         link_type.ends_with("Condition") || link_type == "Split Range"
     }
 
-    /// If `link` has an explicit type, returns it. Otherwise applies the
-    /// Apply-input workaround: treats the first child link of an `*Apply`
-    /// operator (Cross Apply, Anti Semi Apply, Semi Apply, Outer Apply, and
-    /// their Distributed variants) as `"Input"`, matching the official query
-    /// plan operator docs.
-    pub fn get_link_type<'a>(&self, link: Option<&'a ChildLink>) -> &'a str {
-        if let Some(l) = link {
-            if !l.get_type().is_empty() {
-                return l.get_type();
-            }
+    /// Returns the effective type of `parent`'s child link at its original
+    /// `child_link_index`.
+    ///
+    /// This is unambiguous for a shared DAG child: the Apply-input workaround
+    /// is derived from the particular edge being rendered, not from the
+    /// global child-index parent map. Tree traversal must use this method.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `child_link_index` is out of bounds for `parent`.
+    pub fn link_type_in_parent<'a>(
+        &self,
+        parent: &'a PlanNode,
+        child_link_index: usize,
+    ) -> &'a str {
+        let link = &parent.get_child_links()[child_link_index];
+        if !link.get_type().is_empty() {
+            return link.get_type();
         }
-
-        let parent = self.get_parent_node_by_child_link(link);
-        let link_child_index = link.map(ChildLink::get_child_index).unwrap_or(0);
-        if parent.get_display_name().ends_with("Apply")
-            && !parent.get_child_links().is_empty()
-            && parent.get_child_links()[0].get_child_index() == link_child_index
-        {
+        if parent.get_display_name().ends_with("Apply") && child_link_index == 0 {
             return "Input";
         }
         ""
@@ -729,21 +731,24 @@ mod tests {
         assert!(!qp.is_predicate(Some(&l)));
     }
 
-    // --- get_link_type: Apply-input workaround -----------------------------
+    // --- link_type_in_parent: Apply-input workaround -----------------------
 
     #[test]
-    fn get_link_type_returns_explicit_type() {
+    fn link_type_in_parent_returns_explicit_type() {
         let l = link(1, "Condition");
         let qp = QueryPlan::new(alloc::vec![
             node(0, Kind::Relational, "", alloc::vec![l.clone()]),
             node(1, Kind::Relational, "", Vec::new()),
         ])
         .unwrap();
-        assert_eq!(qp.get_link_type(Some(&l)), "Condition");
+        assert_eq!(
+            qp.link_type_in_parent(qp.get_node_by_index(0), 0),
+            "Condition"
+        );
     }
 
     #[test]
-    fn get_link_type_treats_first_apply_child_as_input() {
+    fn link_type_in_parent_treats_first_apply_child_as_input() {
         let untyped = link(1, "");
         let qp = QueryPlan::new(alloc::vec![
             node(
@@ -755,18 +760,18 @@ mod tests {
             node(1, Kind::Relational, "", Vec::new()),
         ])
         .unwrap();
-        assert_eq!(qp.get_link_type(Some(&untyped)), "Input");
+        assert_eq!(qp.link_type_in_parent(qp.get_node_by_index(0), 0), "Input");
     }
 
     #[test]
-    fn get_link_type_untyped_non_apply_link_is_empty() {
+    fn link_type_in_parent_untyped_non_apply_link_is_empty() {
         let untyped = link(1, "");
         let qp = QueryPlan::new(alloc::vec![
             node(0, Kind::Relational, "Filter", alloc::vec![untyped.clone()]),
             node(1, Kind::Relational, "", Vec::new()),
         ])
         .unwrap();
-        assert_eq!(qp.get_link_type(Some(&untyped)), "");
+        assert_eq!(qp.link_type_in_parent(qp.get_node_by_index(0), 0), "");
     }
 
     // --- NodeTitle ---------------------------------------------------------

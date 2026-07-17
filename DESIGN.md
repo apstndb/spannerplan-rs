@@ -57,7 +57,7 @@ The Go module is a set of small packages. Port responsibilities map as follows.
 |---|---|---|
 | root `queryplan.go` | `QueryPlan` type, parent maps, `NodeTitle` formatting, link classification (`IsVisible`/`IsPredicate`/`IsFunction`/`GetLinkType`), formatting options | `spannerplan-core::queryplan` |
 | root `extract.go` | Detect input shape (`queryPlan` / `planNodes` / `stats`) and decode | `spannerplan` (std layer) `extract` |
-| `protoyaml/` | YAML→JSON + protojson unmarshal | `spannerplan` (std) `input`; core stays decode-format-agnostic |
+| external `github.com/apstndb/protoyaml` | YAML→JSON + protojson unmarshal | `spannerplan` (std) `input`; core stays decode-format-agnostic |
 | (new) `proto/` + `build.rs` | Vendored `.proto` subset compiled to `no_std`+`alloc` Rust types via `protox`+`prost-build` (protoc-free) | `spannerplan-core::wire` (feature-gated), see §5.3 |
 | `plantree/plantree.go` | `ProcessPlan`: builds the visible operator tree, computes predicates, scalar child links, per-row execution stats, then calls the tree renderer to get `TreePart`/`NodeText` | `spannerplan-core::plantree` |
 | `treerender/treerender.go` | Generic ASCII tree renderer with wrapping / hanging-indent | `spannerplan-core::treerender` |
@@ -157,8 +157,8 @@ diffs. See §6.2 and §6.7.
 ## 5. Input format and data model
 
 ### 5.1 Three decode paths, one internal model
-The Go tool only ever sees **protojson** (`protojson.Unmarshal` in
-`protoyaml/protoyaml.go`), because the CLI reads YAML/JSON files. A Rust library
+The Go tool only ever sees **protojson** (through the external
+`github.com/apstndb/protoyaml` module), because the CLI reads YAML/JSON files. A Rust library
 has a wider set of realistic callers, so this port supports three ways to get a
 `spannerplan_core::model::PlanNode` tree, all converging on the same internal
 model so `queryplan.rs`/`plantree.rs`/etc. are decode-path-agnostic:
@@ -362,9 +362,11 @@ root), `get_parent_node_by_child_index/link`, `parent_links` (clone),
   - if `link.type == "Search Predicate"` → true iff child kind == Scalar;
   - else if not `is_function` → false;
   - else true iff `link.type` ends with `"Condition"` OR `== "Split Range"`.
-- `get_link_type(link)`: if `link.type != ""` return it; else if parent
-  `display_name` ends with `"Apply"` AND this link is the parent's **first** child
-  link (by child_index) → return `"Input"`; else `""`. (Apply-input workaround.)
+- `link_type_in_parent(parent, raw_child_link_index)`: if that edge has an
+  explicit type, return it; otherwise, if `parent.display_name` ends with
+  `"Apply"` and `raw_child_link_index == 0`, return `"Input"`; else `""`.
+  Keeping the original child-link position makes the Apply-input workaround
+  unambiguous for a shared DAG child.
 
 ### 6.2 `queryplan.rs` — `NodeTitle` (most detail-sensitive function)
 Direct port of `queryplan.go` `NodeTitle`. Options struct:
@@ -572,7 +574,8 @@ sets compact style + compact NodeTitle + compact treerender style. Validate:
 - if `!qp.is_visible(link)` → None.
 - `sep = if !compact {" "} else {""}`.
 - `node = qp.get_node_by_child_link(link)`; guard index >= 0.
-- `link_type = qp.get_link_type(link)`;
+- `link_type = qp.link_type_in_parent(parent, raw_child_link_index)` for a
+  child occurrence (the root has no incoming link type);
   `continuation_anchor = if link_type!="" {"["+link_type+"]"+sep} else {""}`.
 - `node_text = continuation_anchor + NodeTitle(node, queryplan_options)`.
 - `predicates`: for each child link `cl` of node where `qp.is_predicate(cl)`:
@@ -946,7 +949,7 @@ JS golden test across the mode × format × print × wrap matrix (§9).
   `scalarLinkLines`, resolver, `normalizeKeyOrderSuffix`, include predicates.
 - `plantree/reference/reference.go` + `appendix.go`: high-level API.
 - `cmd/rendertree/impl/impl.go`: CLI behavior + strings.
-- `extract.go`, `protoyaml/protoyaml.go`: input detection + YAML/JSON handling.
+- `extract.go`, external `github.com/apstndb/protoyaml`: input detection + YAML/JSON handling.
 - `plantree/reference/reference_test.go`: authoritative golden outputs.
 
 ---
