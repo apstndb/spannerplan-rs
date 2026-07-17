@@ -10,8 +10,9 @@
  * Renders a query plan from protobuf wire bytes.
  *
  * Returns a NUL-terminated UTF-8 string that must be freed with
- * [`spannerplan_string_free`]. Returns NULL on allocation failure. On render
- * error, `*out_is_error` is set to 1 and the returned string holds the message.
+ * [`spannerplan_string_free`]. On render error, `*out_is_error` is set to 1
+ * and the returned string holds the message. Returns NULL only when
+ * `out_is_error` is NULL.
  *
  * # Safety
  *
@@ -29,6 +30,11 @@ char *spannerplan_render_tree_table_wire(const uint8_t *plan_wire,
 /**
  * Renders a query plan from JSON/YAML text (QueryPlan, ResultSetStats, or
  * ResultSet shapes).
+ *
+ * Returns a NUL-terminated UTF-8 string that must be freed with
+ * [`spannerplan_string_free`]. On render error, `*out_is_error` is set to 1
+ * and the returned string holds the message. Returns NULL only when
+ * `out_is_error` is NULL.
  *
  * # Safety
  *

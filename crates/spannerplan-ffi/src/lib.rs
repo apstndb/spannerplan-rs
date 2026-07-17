@@ -11,6 +11,8 @@ use spannerplan::core::reference::{
 use spannerplan::core::wire;
 use spannerplan::extract::extract_plan_nodes;
 
+const INTERIOR_NUL_DIAGNOSTIC: &str = "render result contains an interior NUL byte";
+
 fn render_internal(
     plan_nodes: Vec<spannerplan::core::model::PlanNode>,
     mode: &str,
@@ -41,20 +43,21 @@ fn finish_result(result: Result<String, String>, out_is_error: *mut c_int) -> *m
         return ptr::null_mut();
     }
 
-    match result {
-        Ok(output) => {
-            unsafe { *out_is_error = 0 };
-            CString::new(output)
-                .map(CString::into_raw)
-                .unwrap_or(ptr::null_mut())
-        }
-        Err(message) => {
-            unsafe { *out_is_error = 1 };
-            CString::new(message)
-                .map(CString::into_raw)
-                .unwrap_or(ptr::null_mut())
-        }
-    }
+    let (text, is_error) = match result {
+        Ok(output) => (output, 0),
+        Err(message) => (message, 1),
+    };
+    let (text, is_error) = match CString::new(text) {
+        Ok(text) => (text, is_error),
+        Err(_) => (
+            CString::new(INTERIOR_NUL_DIAGNOSTIC)
+                .expect("fixed FFI diagnostic must not contain an interior NUL"),
+            1,
+        ),
+    };
+
+    unsafe { *out_is_error = is_error };
+    text.into_raw()
 }
 
 fn run_render<F>(out_is_error: *mut c_int, f: F) -> *mut c_char
@@ -83,8 +86,9 @@ fn panic_to_string(panic: Box<dyn std::any::Any + Send>) -> String {
 /// Renders a query plan from protobuf wire bytes.
 ///
 /// Returns a NUL-terminated UTF-8 string that must be freed with
-/// [`spannerplan_string_free`]. Returns NULL on allocation failure. On render
-/// error, `*out_is_error` is set to 1 and the returned string holds the message.
+/// [`spannerplan_string_free`]. On render error, `*out_is_error` is set to 1
+/// and the returned string holds the message. Returns NULL only when
+/// `out_is_error` is NULL.
 ///
 /// # Safety
 ///
@@ -118,6 +122,11 @@ pub unsafe extern "C" fn spannerplan_render_tree_table_wire(
 
 /// Renders a query plan from JSON/YAML text (QueryPlan, ResultSetStats, or
 /// ResultSet shapes).
+///
+/// Returns a NUL-terminated UTF-8 string that must be freed with
+/// [`spannerplan_string_free`]. On render error, `*out_is_error` is set to 1
+/// and the returned string holds the message. Returns NULL only when
+/// `out_is_error` is NULL.
 ///
 /// # Safety
 ///
@@ -242,6 +251,31 @@ mod tests {
         let (message, is_error) = call_json("not a plan document", "AUTO", "CURRENT", None);
         assert_eq!(is_error, 1);
         assert!(!message.is_empty());
+    }
+
+    #[test]
+    fn json_entry_point_interior_nul_output_returns_error_string() {
+        let plan = r#"{
+            "planNodes": [{
+                "index": 0,
+                "kind": "RELATIONAL",
+                "displayName": "Scan\u0000Injected"
+            }]
+        }"#;
+        let (message, is_error) = call_json(plan, "AUTO", "CURRENT", None);
+        assert_eq!(is_error, 1);
+        assert_eq!(message, INTERIOR_NUL_DIAGNOSTIC);
+    }
+
+    #[test]
+    fn finish_result_interior_nul_error_returns_fixed_error_string() {
+        let mut is_error = 0;
+        let out = finish_result(Err("bad\0message".to_string()), &mut is_error);
+        assert!(!out.is_null());
+        let message = unsafe { CStr::from_ptr(out) }.to_str().unwrap();
+        assert_eq!(is_error, 1);
+        assert_eq!(message, INTERIOR_NUL_DIAGNOSTIC);
+        unsafe { spannerplan_string_free(out) };
     }
 
     #[test]
