@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/apstndb/spannerplan-rs/schema/plantree-rows-v1.schema.json",
-  "title": "Plantree rows v1 response",
-  "description": "Versioned structured Plantree response returned by the WASM API. Success contains contractVersion 1 and pre-order rows; failures contain only an error string.",
+  "$id": "https://github.com/apstndb/spannerplan-rs/schema/plantree-rows-v1alpha2.internal.schema.json",
+  "title": "Bundled viewer Plantree rows v1alpha2 response",
+  "description": "Internal co-pinned viewer response. Success uses numeric wire revision 2 and occurrence-preserving rows; failures contain only an error string. No external compatibility is promised.",
   "oneOf": [
     {
       "type": "object",
@@ -10,7 +10,7 @@
       "required": ["contractVersion", "rows"],
       "properties": {
         "contractVersion": {
-          "const": 1
+          "const": 2
         },
         "rows": {
           "type": "array",
@@ -34,6 +34,8 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "rowId",
+        "parentRowId",
         "nodeId",
         "treePart",
         "nodeText",
@@ -42,6 +44,8 @@
         "scalarChildLinks"
       ],
       "properties": {
+        "rowId": { "type": "string", "pattern": "^0(?:\\.[0-9]+)*$" },
+        "parentRowId": { "type": ["string", "null"] },
         "nodeId": { "type": "integer" },
         "treePart": { "type": "string" },
         "nodeText": { "type": "string" },

@@ -7,7 +7,7 @@ demands it.
 
 Latest release: https://github.com/apstndb/spannerplan-rs/releases
 
-Replace `v0.1.0-alpha.2` below with the tag you want.
+Replace `v0.1.0-alpha.3` below with the tag you want.
 
 ## GitHub Releases
 
@@ -27,15 +27,15 @@ an older release when an archive is available.
 Download everything for a tag:
 
 ```bash
-gh release download v0.1.0-alpha.2 --repo apstndb/spannerplan-rs
+gh release download v0.1.0-alpha.3 --repo apstndb/spannerplan-rs
 ```
 
 Download and extract the FFI archive for your OS (example: macOS arm64):
 
 ```bash
-gh release download v0.1.0-alpha.2 --repo apstndb/spannerplan-rs \
+gh release download v0.1.0-alpha.3 --repo apstndb/spannerplan-rs \
   --pattern 'spannerplan-ffi-*-aarch64-apple-darwin.tar.gz'
-tar -xzf spannerplan-ffi-0.1.0-alpha.2-aarch64-apple-darwin.tar.gz
+tar -xzf spannerplan-ffi-0.1.0-alpha.3-aarch64-apple-darwin.tar.gz
 export SPANNERPLAN_FFI_DIR="$PWD"
 ```
 
@@ -45,20 +45,20 @@ Library:
 
 ```toml
 [dependencies]
-spannerplan = { git = "https://github.com/apstndb/spannerplan-rs", tag = "v0.1.0-alpha.2" }
+spannerplan = { git = "https://github.com/apstndb/spannerplan-rs", tag = "v0.1.0-alpha.3" }
 ```
 
 `no_std` core only:
 
 ```toml
 [dependencies]
-spannerplan-core = { git = "https://github.com/apstndb/spannerplan-rs", tag = "v0.1.0-alpha.2" }
+spannerplan-core = { git = "https://github.com/apstndb/spannerplan-rs", tag = "v0.1.0-alpha.3" }
 ```
 
 CLI binary:
 
 ```bash
-cargo install --git https://github.com/apstndb/spannerplan-rs --tag v0.1.0-alpha.2 spannerplan-cli
+cargo install --git https://github.com/apstndb/spannerplan-rs --tag v0.1.0-alpha.3 spannerplan-cli
 rendertree -mode plan < plan.yaml
 ```
 
@@ -69,8 +69,8 @@ Crates are marked `publish = false`; releases do not publish to crates.io.
 ### From a release tarball (recommended — WASM prebuilt)
 
 ```bash
-gh release download v0.1.0-alpha.2 --repo apstndb/spannerplan-rs --pattern 'spannerplan-core*.tgz'
-npm install ./spannerplan-core-0.1.0-alpha.2.tgz
+gh release download v0.1.0-alpha.3 --repo apstndb/spannerplan-rs --pattern 'spannerplan-core*.tgz'
+npm install ./spannerplan-core-0.1.0-alpha.3.tgz
 ```
 
 `package.json`:
@@ -78,7 +78,7 @@ npm install ./spannerplan-core-0.1.0-alpha.2.tgz
 ```json
 {
   "dependencies": {
-    "@spannerplan/core": "file:./vendor/spannerplan-core-0.1.0-alpha.2.tgz"
+    "@spannerplan/core": "file:./vendor/spannerplan-core-0.1.0-alpha.3.tgz"
   }
 }
 ```
@@ -86,9 +86,9 @@ npm install ./spannerplan-core-0.1.0-alpha.2.tgz
 CLI from release:
 
 ```bash
-gh release download v0.1.0-alpha.2 --repo apstndb/spannerplan-rs \
+gh release download v0.1.0-alpha.3 --repo apstndb/spannerplan-rs \
   --pattern 'spannerplan-core*.tgz' --pattern 'spannerplan-cli*.tgz'
-npm install -g ./spannerplan-core-0.1.0-alpha.2.tgz ./spannerplan-cli-0.1.0-alpha.2.tgz
+npm install -g ./spannerplan-core-0.1.0-alpha.3.tgz ./spannerplan-cli-0.1.0-alpha.3.tgz
 rendertree -mode plan < plan.yaml
 ```
 
@@ -99,7 +99,7 @@ be resolved from the npm registry.
 ### From a clone or submodule (builds WASM — requires Rust + wasm-pack)
 
 ```bash
-git clone --depth 1 --branch v0.1.0-alpha.2 https://github.com/apstndb/spannerplan-rs
+git clone --depth 1 --branch v0.1.0-alpha.3 https://github.com/apstndb/spannerplan-rs
 cd spannerplan-rs/js
 npm install
 npm run build -w @spannerplan/core
@@ -123,23 +123,23 @@ Pattern for all FFI languages:
 ### Python
 
 ```bash
-pip install "spannerplan @ git+https://github.com/apstndb/spannerplan-rs@v0.1.0-alpha.2#subdirectory=bindings/python"
+pip install "spannerplan @ git+https://github.com/apstndb/spannerplan-rs@v0.1.0-alpha.3#subdirectory=bindings/python"
 
-gh release download v0.1.0-alpha.2 --repo apstndb/spannerplan-rs --pattern \
-  'spannerplan-ffi-0.1.0-alpha.2-aarch64-apple-darwin.tar.gz'
-tar -xzf spannerplan-ffi-0.1.0-alpha.2-aarch64-apple-darwin.tar.gz
+gh release download v0.1.0-alpha.3 --repo apstndb/spannerplan-rs --pattern \
+  'spannerplan-ffi-0.1.0-alpha.3-aarch64-apple-darwin.tar.gz'
+tar -xzf spannerplan-ffi-0.1.0-alpha.3-aarch64-apple-darwin.tar.gz
 export SPANNERPLAN_FFI_LIB="$PWD/libspannerplan_ffi.dylib"
 ```
 
 ### Java
 
 ```bash
-git clone --depth 1 --branch v0.1.0-alpha.2 https://github.com/apstndb/spannerplan-rs
+git clone --depth 1 --branch v0.1.0-alpha.3 https://github.com/apstndb/spannerplan-rs
 cd spannerplan-rs/bindings/java
 
-gh release download v0.1.0-alpha.2 --repo apstndb/spannerplan-rs --pattern \
-  'spannerplan-ffi-0.1.0-alpha.2-x86_64-unknown-linux-gnu.tar.gz'
-tar -xzf spannerplan-ffi-0.1.0-alpha.2-x86_64-unknown-linux-gnu.tar.gz
+gh release download v0.1.0-alpha.3 --repo apstndb/spannerplan-rs --pattern \
+  'spannerplan-ffi-0.1.0-alpha.3-x86_64-unknown-linux-gnu.tar.gz'
+tar -xzf spannerplan-ffi-0.1.0-alpha.3-x86_64-unknown-linux-gnu.tar.gz
 export SPANNERPLAN_FFI_LIB="$PWD/libspannerplan_ffi.so"
 
 mvn -q test
@@ -151,12 +151,12 @@ Add as a dependency via git submodule + local `mvn install`, or copy
 ### .NET
 
 ```bash
-git clone --depth 1 --branch v0.1.0-alpha.2 https://github.com/apstndb/spannerplan-rs
+git clone --depth 1 --branch v0.1.0-alpha.3 https://github.com/apstndb/spannerplan-rs
 cd spannerplan-rs
 
-gh release download v0.1.0-alpha.2 --repo apstndb/spannerplan-rs --pattern \
-  'spannerplan-ffi-0.1.0-alpha.2-x86_64-pc-windows-msvc.zip'
-unzip spannerplan-ffi-0.1.0-alpha.2-x86_64-pc-windows-msvc.zip
+gh release download v0.1.0-alpha.3 --repo apstndb/spannerplan-rs --pattern \
+  'spannerplan-ffi-0.1.0-alpha.3-x86_64-pc-windows-msvc.zip'
+unzip spannerplan-ffi-0.1.0-alpha.3-x86_64-pc-windows-msvc.zip
 export SPANNERPLAN_FFI_LIB="$PWD/spannerplan_ffi.dll"
 
 dotnet test bindings/dotnet/SpannerPlan.sln
@@ -168,27 +168,27 @@ solution via project reference.
 ### Ruby
 
 ```bash
-git clone --depth 1 --branch v0.1.0-alpha.2 https://github.com/apstndb/spannerplan-rs
+git clone --depth 1 --branch v0.1.0-alpha.3 https://github.com/apstndb/spannerplan-rs
 cd spannerplan-rs/bindings/ruby
 
-gh release download v0.1.0-alpha.2 --repo apstndb/spannerplan-rs --pattern \
-  'spannerplan-ffi-0.1.0-alpha.2-x86_64-apple-darwin.tar.gz'
-tar -xzf spannerplan-ffi-0.1.0-alpha.2-x86_64-apple-darwin.tar.gz
+gh release download v0.1.0-alpha.3 --repo apstndb/spannerplan-rs --pattern \
+  'spannerplan-ffi-0.1.0-alpha.3-x86_64-apple-darwin.tar.gz'
+tar -xzf spannerplan-ffi-0.1.0-alpha.3-x86_64-apple-darwin.tar.gz
 export SPANNERPLAN_FFI_LIB="$PWD/libspannerplan_ffi.dylib"
 
 gem build spannerplan.gemspec
-gem install ./spannerplan-0.1.0.alpha.2.gem
+gem install ./spannerplan-0.1.0.alpha.3.gem
 ```
 
 ### PHP
 
 ```bash
-git clone --depth 1 --branch v0.1.0-alpha.2 https://github.com/apstndb/spannerplan-rs
+git clone --depth 1 --branch v0.1.0-alpha.3 https://github.com/apstndb/spannerplan-rs
 cd spannerplan-rs/bindings/php
 
-gh release download v0.1.0-alpha.2 --repo apstndb/spannerplan-rs --pattern \
-  'spannerplan-ffi-0.1.0-alpha.2-x86_64-unknown-linux-gnu.tar.gz'
-tar -xzf spannerplan-ffi-0.1.0-alpha.2-x86_64-unknown-linux-gnu.tar.gz
+gh release download v0.1.0-alpha.3 --repo apstndb/spannerplan-rs --pattern \
+  'spannerplan-ffi-0.1.0-alpha.3-x86_64-unknown-linux-gnu.tar.gz'
+tar -xzf spannerplan-ffi-0.1.0-alpha.3-x86_64-unknown-linux-gnu.tar.gz
 export SPANNERPLAN_FFI_LIB="$PWD/libspannerplan_ffi.so"
 
 composer install
@@ -198,12 +198,12 @@ php -d ffi.enable=true test_render.php
 ### C++
 
 ```bash
-git clone --depth 1 --branch v0.1.0-alpha.2 https://github.com/apstndb/spannerplan-rs
+git clone --depth 1 --branch v0.1.0-alpha.3 https://github.com/apstndb/spannerplan-rs
 cd spannerplan-rs
 
-gh release download v0.1.0-alpha.2 --repo apstndb/spannerplan-rs --pattern \
-  'spannerplan-ffi-0.1.0-alpha.2-aarch64-apple-darwin.tar.gz'
-tar -xzf spannerplan-ffi-0.1.0-alpha.2-aarch64-apple-darwin.tar.gz
+gh release download v0.1.0-alpha.3 --repo apstndb/spannerplan-rs --pattern \
+  'spannerplan-ffi-0.1.0-alpha.3-aarch64-apple-darwin.tar.gz'
+tar -xzf spannerplan-ffi-0.1.0-alpha.3-aarch64-apple-darwin.tar.gz
 export SPANNERPLAN_FFI_LIB="$PWD/libspannerplan_ffi.dylib"
 
 cmake -S bindings/cpp -B bindings/cpp/build

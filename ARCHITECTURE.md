@@ -69,13 +69,13 @@ Two WASM/FFI entry styles exist on purpose:
 | Entry | Rust / WASM symbol | Use when |
 |-------|-------------------|----------|
 | **Reference API** | `render_tree_table_with_config` / `spannerplanRenderTreeTable` | Library callers: plan bytes + mode/format + [`RenderConfig`](schema/render-config.schema.json). Matches Go `RenderTreeTableWithConfig`. |
-| **Structured Plantree** | `plantree_rows` / `spannerplanPlantreeRows` | Library callers that need typed pre-order Plantree rows rather than formatted table text. Versioned by [`plantree-rows-v1.schema.json`](schema/plantree-rows-v1.schema.json). |
+| **Bundled viewer contract** | `plantree_rows` / `spannerplanInternalPlantreeRowsV1Alpha2` | Internal, checksum-pinned `spanner-plan-viewer` integration. Revision 2 is documented by [`plantree-rows-v1alpha2.internal.schema.json`](schema/plantree-rows-v1alpha2.internal.schema.json); it is not an external compatibility surface. |
 | **CLI runner** | `spannerplan_cli::run_collecting` / `spannerplanRenderRendertree` | Reproduce `rendertree` flag semantics exactly (help text, usage errors, profile column behavior). Node-only in JS (`renderRendertree`). |
 
 All three funnel into the same Plantree processing core; the CLI path adds flag
-parsing and process-style I/O. Prefer the **structured Plantree API** when a
-consumer needs rows, the **reference API** when it needs the formatted table,
-and the **CLI path** only when matching shell tool behavior.
+parsing and process-style I/O. External consumers should use the **reference
+API** for formatted output or the **CLI path** for shell parity. The structured
+contract is reserved for the co-pinned viewer bundle.
 
 Shared config shape: [`schema/render-config.schema.json`](schema/render-config.schema.json)
 (camelCase JSON, decoded by Rust `RenderConfig`, FFI `config_json`, WASM
@@ -101,7 +101,7 @@ Both accept JSON objects and protobuf wire bytes (`Uint8Array`). Size matrix:
 
 | Package | Role |
 |---------|------|
-| `@spannerplan/core` | `renderTreeTable`, `renderTreeTableWire`, `plantreeRows`, `plantreeRowsWire`, types |
+| `@spannerplan/core` | Public `renderTreeTable` / `renderTreeTableWire`; bundled-viewer-only `internalPlantreeRowsV1Alpha2*` |
 | `@spannerplan/cli` | `rendertree` npm binary (stdin + flags → WASM CLI path) |
 
 Details (build prerequisites, input shapes, browser bundler, API examples):

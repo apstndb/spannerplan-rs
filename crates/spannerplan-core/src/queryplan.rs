@@ -351,10 +351,6 @@ pub enum KnownFlagFormat {
     Label,
 }
 
-/// Deprecated in Go as an alias of `KnownFlagFormat`; kept only as a type
-/// alias here for anyone porting code that used the old name.
-pub type FullScanFormat = KnownFlagFormat;
-
 pub fn parse_known_flag_format(s: &str) -> Result<KnownFlagFormat, ParseOptionError> {
     if s.eq_ignore_ascii_case("RAW") {
         Ok(KnownFlagFormat::Raw)

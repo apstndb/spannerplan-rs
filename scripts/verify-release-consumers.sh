@@ -3,7 +3,7 @@
 # workspace-built native library or JavaScript package.
 set -euo pipefail
 
-TAG="${1:-v0.1.0-alpha.2}"
+TAG="${1:-v0.1.0-alpha.3}"
 REPO_INPUT="${SPANNERPLAN_REPO:-apstndb/spannerplan-rs}"
 if [[ "$REPO_INPUT" == https://github.com/* ]]; then
   REPO="${REPO_INPUT#https://github.com/}"

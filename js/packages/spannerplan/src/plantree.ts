@@ -1,8 +1,8 @@
 import type {
-  PlantreeConfig,
-  PlantreeChildLink,
-  PlantreeRow,
-  PlantreeRowsResponse,
+  InternalPlantreeConfigV1Alpha2,
+  InternalPlantreeChildLinkV1Alpha2,
+  InternalPlantreeRowV1Alpha2,
+  InternalPlantreeRowsResponseV1Alpha2,
 } from "./types.js";
 
 interface RawPlantreeRowsResponse {
@@ -19,7 +19,7 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
-function parsePlantreeChildLink(value: unknown): PlantreeChildLink | null {
+function parsePlantreeChildLink(value: unknown): InternalPlantreeChildLinkV1Alpha2 | null {
   if (
     !isRecord(value) ||
     typeof value.type !== "string" ||
@@ -43,9 +43,11 @@ function parsePlantreeChildLink(value: unknown): PlantreeChildLink | null {
   };
 }
 
-function parsePlantreeRow(value: unknown): PlantreeRow | null {
+function parsePlantreeRow(value: unknown): InternalPlantreeRowV1Alpha2 | null {
   if (
     !isRecord(value) ||
+    typeof value.rowId !== "string" ||
+    !(typeof value.parentRowId === "string" || value.parentRowId === null) ||
     typeof value.nodeId !== "number" ||
     !Number.isInteger(value.nodeId) ||
     typeof value.treePart !== "string" ||
@@ -57,7 +59,7 @@ function parsePlantreeRow(value: unknown): PlantreeRow | null {
     return null;
   }
 
-  const scalarChildLinks: PlantreeChildLink[] = [];
+  const scalarChildLinks: InternalPlantreeChildLinkV1Alpha2[] = [];
   for (const childLink of value.scalarChildLinks) {
     const parsed = parsePlantreeChildLink(childLink);
     if (!parsed) return null;
@@ -65,6 +67,8 @@ function parsePlantreeRow(value: unknown): PlantreeRow | null {
   }
 
   return {
+    rowId: value.rowId,
+    parentRowId: value.parentRowId,
     nodeId: value.nodeId,
     treePart: value.treePart,
     nodeText: value.nodeText,
@@ -75,8 +79,8 @@ function parsePlantreeRow(value: unknown): PlantreeRow | null {
 }
 
 /** Convert the deliberately small structured-Plantree config to WASM JSON. */
-export function toPlantreeConfig(
-  config: PlantreeConfig = {},
+export function toInternalPlantreeConfigV1Alpha2(
+  config: InternalPlantreeConfigV1Alpha2 = {},
 ): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   if (config.wrapWidth !== undefined) out.wrapWidth = config.wrapWidth;
@@ -92,7 +96,9 @@ export function toPlantreeConfig(
  * parse the formatted Plantree text. It validates the versioned DTO fields,
  * but deliberately does not infer any structure from rendered strings.
  */
-export function parsePlantreeRowsResponse(raw: unknown): PlantreeRowsResponse {
+export function parseInternalPlantreeRowsResponseV1Alpha2(
+  raw: unknown,
+): InternalPlantreeRowsResponseV1Alpha2 {
   if (!raw || typeof raw !== "object") {
     return { error: "unexpected WASM Plantree response" };
   }
@@ -104,13 +110,13 @@ export function parsePlantreeRowsResponse(raw: unknown): PlantreeRowsResponse {
     }
     return { error: "unexpected WASM Plantree error response" };
   }
-  if (value.contractVersion !== 1) {
+  if (value.contractVersion !== 2) {
     return { error: "unsupported WASM Plantree contract version" };
   }
   if (!Array.isArray(value.rows)) {
     return { error: "unexpected WASM Plantree rows response" };
   }
-  const rows: PlantreeRow[] = [];
+  const rows: InternalPlantreeRowV1Alpha2[] = [];
   for (const row of value.rows) {
     const parsed = parsePlantreeRow(row);
     if (!parsed) {
@@ -120,7 +126,7 @@ export function parsePlantreeRowsResponse(raw: unknown): PlantreeRowsResponse {
   }
 
   return {
-    contractVersion: 1,
+    contractVersion: 2,
     rows,
   };
 }

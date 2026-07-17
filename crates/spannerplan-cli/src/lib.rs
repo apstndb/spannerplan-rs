@@ -255,12 +255,10 @@ fn parse_args<E: Write>(args: &[&str], stderr: &mut E) -> Result<Option<ParsedAr
     let mut disallow_unknown_stats = false;
     let mut execution_method = "angle".to_string();
     let mut target_metadata = "on".to_string();
-    let mut full_scan = String::new();
     let mut known_flag = String::new();
     let mut compact = false;
     let mut wrap_width: i32 = 0;
     let mut hanging_indent = false;
-    let mut custom: Vec<String> = Vec::new();
     let mut custom_column: Vec<String> = Vec::new();
     let mut custom_file = String::new();
 
@@ -292,9 +290,6 @@ fn parse_args<E: Write>(args: &[&str], stderr: &mut E) -> Result<Option<ParsedAr
             "-target-metadata" | "--target-metadata" => {
                 target_metadata = value_or_next(value, args, &mut i, "-target-metadata")?;
             }
-            "-full-scan" | "--full-scan" => {
-                full_scan = value_or_next(value, args, &mut i, "-full-scan")?;
-            }
             "-known-flag" | "--known-flag" => {
                 known_flag = value_or_next(value, args, &mut i, "-known-flag")?;
             }
@@ -310,9 +305,6 @@ fn parse_args<E: Write>(args: &[&str], stderr: &mut E) -> Result<Option<ParsedAr
                 })?;
             }
             "-hanging-indent" | "--hanging-indent" => hanging_indent = parse_bool_flag(value)?,
-            "-custom" | "--custom" => {
-                custom.push(value_or_next(value, args, &mut i, "-custom")?);
-            }
             "-custom-column" | "--custom-column" => {
                 custom_column.push(value_or_next(value, args, &mut i, "-custom-column")?);
             }
@@ -334,48 +326,11 @@ fn parse_args<E: Write>(args: &[&str], stderr: &mut E) -> Result<Option<ParsedAr
         i += 1;
     }
 
-    if !full_scan.is_empty() {
-        if !known_flag.is_empty() {
-            let msg = "--full-scan and --known-flag are mutually exclusive";
-            writeln!(stderr, "{msg}").ok();
-            print_usage(stderr);
-            return Err(UsageError::new(msg));
-        }
-        writeln!(
-            stderr,
-            "--full-scan is deprecated. You must migrate to --known-flag."
-        )
-        .ok();
-        known_flag = full_scan;
-    }
-
-    if !custom.is_empty() && !custom_file.is_empty() {
-        let msg = "--custom and --custom-file are mutually exclusive";
-        writeln!(stderr, "{msg}").ok();
-        print_usage(stderr);
-        return Err(UsageError::new(msg));
-    }
     if !custom_column.is_empty() && !custom_file.is_empty() {
         let msg = "--custom-column and --custom-file are mutually exclusive";
         writeln!(stderr, "{msg}").ok();
         print_usage(stderr);
         return Err(UsageError::new(msg));
-    }
-    if !custom.is_empty() && !custom_column.is_empty() {
-        let msg = "--custom and --custom-column are mutually exclusive";
-        writeln!(stderr, "{msg}").ok();
-        print_usage(stderr);
-        return Err(UsageError::new(msg));
-    }
-    if !custom.is_empty() {
-        writeln!(
-            stderr,
-            "--custom is deprecated. You must migrate to --custom-column or --custom-file."
-        )
-        .ok();
-        return Err(UsageError::new(
-            "custom table columns are not yet implemented in spannerplan-rs (see DESIGN.md §12)",
-        ));
     }
     if !custom_column.is_empty() || !custom_file.is_empty() {
         return Err(UsageError::new(
@@ -499,7 +454,7 @@ fn print_usage<E: Write>(stderr: &mut E) {
     writeln!(stderr, "Usage of rendertree:").ok();
     writeln!(
         stderr,
-        "  -compact\n    \tEnable compact format\n  -disallow-unknown-stats\n    \terror on unknown stats field\n  -execution-method string\n    \tFormat execution method metadata: 'angle' or 'raw' (default: angle)\n  -full-scan string\n    \tDeprecated alias for --known-flag.\n  -hanging-indent\n    \tEnable hanging indent for wrapped lines after node-local prefixes such as [Input] and [Map]\n  -help\n    \tShow this help message\n  -inline-stats\n    \tEnable inline stats\n  -known-flag string\n    \tFormat known flags: 'label' or 'raw' (default: label)\n  -mode string\n    \tPROFILE, PLAN, AUTO(ignore case) (default \"AUTO\")\n  -print string\n    \tprint appendix preset (basic, enhanced, full, none; empty value suppresses appendices) or comma-separated sections (predicates, ordering, aggregate, typed, full); presets are standalone; typed/full cannot be combined (default \"basic\")\n  -resolve-vars\n    \tEXPERIMENTAL: resolve scalar variable aliases in semantic appendix sections\n  -resolve-vars-recursive\n    \tEXPERIMENTAL: recursively resolve scalar variable aliases in semantic appendix sections\n  -show-vars\n    \tshow scalar variable assignments in semantic appendix sections\n  -target-metadata string\n    \tFormat target metadata: 'on' or 'raw' (default: on)\n  -wrap-width int\n    \tNumber of characters at which to wrap the Operator column content. 0 means no wrapping. (default 0)"
+        "  -compact\n    \tEnable compact format\n  -disallow-unknown-stats\n    \terror on unknown stats field\n  -execution-method string\n    \tFormat execution method metadata: 'angle' or 'raw' (default: angle)\n  -hanging-indent\n    \tEnable hanging indent for wrapped lines after node-local prefixes such as [Input] and [Map]\n  -help\n    \tShow this help message\n  -inline-stats\n    \tEnable inline stats\n  -known-flag string\n    \tFormat known flags: 'label' or 'raw' (default: label)\n  -mode string\n    \tPROFILE, PLAN, AUTO(ignore case) (default \"AUTO\")\n  -print string\n    \tprint appendix preset (basic, enhanced, full, none; empty value suppresses appendices) or comma-separated sections (predicates, ordering, aggregate, typed, full); presets are standalone; typed/full cannot be combined (default \"basic\")\n  -resolve-vars\n    \tEXPERIMENTAL: resolve scalar variable aliases in semantic appendix sections\n  -resolve-vars-recursive\n    \tEXPERIMENTAL: recursively resolve scalar variable aliases in semantic appendix sections\n  -show-vars\n    \tshow scalar variable assignments in semantic appendix sections\n  -target-metadata string\n    \tFormat target metadata: 'on' or 'raw' (default: on)\n  -wrap-width int\n    \tNumber of characters at which to wrap the Operator column content. 0 means no wrapping. (default 0)"
     )
     .ok();
 }

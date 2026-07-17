@@ -10,9 +10,9 @@ Depends on [`@spannerplan/core`](../spannerplan) (WASM-backed).
 From a [GitHub Release](https://github.com/apstndb/spannerplan-rs/releases) tarball:
 
 ```bash
-gh release download v0.1.0-alpha.2 --repo apstndb/spannerplan-rs \
+gh release download v0.1.0-alpha.3 --repo apstndb/spannerplan-rs \
   --pattern 'spannerplan-core*.tgz' --pattern 'spannerplan-cli*.tgz'
-npm install -g ./spannerplan-core-0.1.0-alpha.2.tgz ./spannerplan-cli-0.1.0-alpha.2.tgz
+npm install -g ./spannerplan-core-0.1.0-alpha.3.tgz ./spannerplan-cli-0.1.0-alpha.3.tgz
 ```
 
 Install both tarballs in the same `npm install` invocation. The CLI tarball
@@ -49,9 +49,9 @@ Flags mirror the Go/Rust `rendertree` tool where implemented:
 
 Exit codes: `0` success, `2` usage/flag errors (matches Rust CLI), `1` other failures.
 
-## Not yet implemented (v1)
+## Not yet implemented (alpha)
 
-- Custom columns (`--custom`, `--custom-column`, `--custom-file`) — deferred (see `DESIGN.md` §12)
+- Custom columns (`--custom-column`, `--custom-file`) — deferred (see `DESIGN.md` §12)
 - `--inline-stats`
 
 ## Tests

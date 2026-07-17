@@ -3,17 +3,17 @@ import { normalizePlanInput, normalizeStdinBytes } from "./input.js";
 import type {
   BytesInput,
   Format,
+  InternalPlantreeConfigV1Alpha2,
+  InternalPlantreeRowsResponseV1Alpha2,
   PlanInput,
-  PlantreeConfig,
-  PlantreeRowsResponse,
   RenderConfig,
   RenderMode,
   RenderResponse,
   RendertreeResponse,
 } from "./types.js";
 import {
-  parsePlantreeRowsResponse,
-  toPlantreeConfig,
+  parseInternalPlantreeRowsResponseV1Alpha2,
+  toInternalPlantreeConfigV1Alpha2,
 } from "./plantree.js";
 import { getBrowserWasm, getNodeWasm, isNodeRuntime } from "./wasm-node.js";
 
@@ -98,37 +98,53 @@ function renderTreeTableNode(
   return parseRenderResponse(wasm.spannerplanRenderTreeTable(args));
 }
 
-function plantreeRowsNode(
+function internalPlantreeRowsV1Alpha2Node(
   plan: string | Uint8Array | Record<string, unknown>,
   format: Format,
-  config: PlantreeConfig,
-): PlantreeRowsResponse {
+  config: InternalPlantreeConfigV1Alpha2,
+): InternalPlantreeRowsResponseV1Alpha2 {
   const wasm = getNodeWasm();
   const normalized = normalizePlanInput(plan);
   if (normalized instanceof Uint8Array) {
-    return parsePlantreeRowsResponse(
-      wasm.spannerplanPlantreeRowsWire(normalized, format, toPlantreeConfig(config)),
+    return parseInternalPlantreeRowsResponseV1Alpha2(
+      wasm.spannerplanInternalPlantreeRowsV1Alpha2Wire(
+        normalized,
+        format,
+        toInternalPlantreeConfigV1Alpha2(config),
+      ),
     );
   }
-  return parsePlantreeRowsResponse(
-    wasm.spannerplanPlantreeRows([normalized, format, toPlantreeConfig(config)]),
+  return parseInternalPlantreeRowsResponseV1Alpha2(
+    wasm.spannerplanInternalPlantreeRowsV1Alpha2([
+      normalized,
+      format,
+      toInternalPlantreeConfigV1Alpha2(config),
+    ]),
   );
 }
 
-async function plantreeRowsBrowser(
+async function internalPlantreeRowsV1Alpha2Browser(
   plan: string | Uint8Array | Record<string, unknown>,
   format: Format,
-  config: PlantreeConfig,
-): Promise<PlantreeRowsResponse> {
+  config: InternalPlantreeConfigV1Alpha2,
+): Promise<InternalPlantreeRowsResponseV1Alpha2> {
   const wasm = await getBrowserWasm();
   const normalized = normalizePlanInputBrowser(plan);
   if (normalized instanceof Uint8Array) {
-    return parsePlantreeRowsResponse(
-      wasm.spannerplanPlantreeRowsWire(normalized, format, toPlantreeConfig(config)),
+    return parseInternalPlantreeRowsResponseV1Alpha2(
+      wasm.spannerplanInternalPlantreeRowsV1Alpha2Wire(
+        normalized,
+        format,
+        toInternalPlantreeConfigV1Alpha2(config),
+      ),
     );
   }
-  return parsePlantreeRowsResponse(
-    wasm.spannerplanPlantreeRows([normalized, format, toPlantreeConfig(config)]),
+  return parseInternalPlantreeRowsResponseV1Alpha2(
+    wasm.spannerplanInternalPlantreeRowsV1Alpha2([
+      normalized,
+      format,
+      toInternalPlantreeConfigV1Alpha2(config),
+    ]),
   );
 }
 
@@ -193,35 +209,35 @@ export function renderTreeTableWire(
 }
 
 /**
- * Return structured Plantree rows without parsing formatted table text.
- * Node.js returns synchronously; browser hosts return a Promise.
+ * @internal Bundled viewer Plantree v1alpha2 contract. This symbol may change
+ * in any prerelease and is not an external compatibility surface.
  */
-export function plantreeRows(
+export function internalPlantreeRowsV1Alpha2(
   plan: PlanInput,
   format: Format = "CURRENT",
-  config: PlantreeConfig = {},
-): PlantreeRowsResponse | Promise<PlantreeRowsResponse> {
+  config: InternalPlantreeConfigV1Alpha2 = {},
+): InternalPlantreeRowsResponseV1Alpha2 | Promise<InternalPlantreeRowsResponseV1Alpha2> {
   if (isNodeRuntime()) {
-    return plantreeRowsNode(plan, format, config);
+    return internalPlantreeRowsV1Alpha2Node(plan, format, config);
   }
-  return plantreeRowsBrowser(plan, format, config);
+  return internalPlantreeRowsV1Alpha2Browser(plan, format, config);
 }
 
-/** Return structured Plantree rows from protobuf wire plan bytes. */
-export function plantreeRowsWire(
+/** @internal Wire-input variant of the bundled viewer contract. */
+export function internalPlantreeRowsV1Alpha2Wire(
   planWire: Uint8Array,
   format: Format = "CURRENT",
-  config: PlantreeConfig = {},
-): PlantreeRowsResponse | Promise<PlantreeRowsResponse> {
-  const cfg = toPlantreeConfig(config);
+  config: InternalPlantreeConfigV1Alpha2 = {},
+): InternalPlantreeRowsResponseV1Alpha2 | Promise<InternalPlantreeRowsResponseV1Alpha2> {
+  const cfg = toInternalPlantreeConfigV1Alpha2(config);
   if (isNodeRuntime()) {
-    return parsePlantreeRowsResponse(
-      getNodeWasm().spannerplanPlantreeRowsWire(planWire, format, cfg),
+    return parseInternalPlantreeRowsResponseV1Alpha2(
+      getNodeWasm().spannerplanInternalPlantreeRowsV1Alpha2Wire(planWire, format, cfg),
     );
   }
   return getBrowserWasm().then((wasm) =>
-    parsePlantreeRowsResponse(
-      wasm.spannerplanPlantreeRowsWire(planWire, format, cfg),
+    parseInternalPlantreeRowsResponseV1Alpha2(
+      wasm.spannerplanInternalPlantreeRowsV1Alpha2Wire(planWire, format, cfg),
     ),
   );
 }
@@ -256,13 +272,13 @@ export async function renderTreeTableOrThrow(
   return result.output;
 }
 
-/** Convenience: structured Plantree rows or throw on error. */
-export async function plantreeRowsOrThrow(
+/** @internal Convenience wrapper for the bundled viewer contract. */
+export async function internalPlantreeRowsV1Alpha2OrThrow(
   plan: PlanInput,
   format: Format = "CURRENT",
-  config: PlantreeConfig = {},
+  config: InternalPlantreeConfigV1Alpha2 = {},
 ) {
-  const result = await plantreeRows(plan, format, config);
+  const result = await internalPlantreeRowsV1Alpha2(plan, format, config);
   if ("error" in result) {
     throw new Error(result.error);
   }

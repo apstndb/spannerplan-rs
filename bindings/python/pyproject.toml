@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "spannerplan"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 description = "Render Cloud Spanner query plans as ASCII tables (FFI-backed)"
 readme = "README.md"
 license = { text = "Apache-2.0" }

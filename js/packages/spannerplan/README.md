@@ -31,14 +31,14 @@ From a [GitHub Release](https://github.com/apstndb/spannerplan-rs/releases) tarb
 (WASM prebuilt; no Rust toolchain):
 
 ```bash
-gh release download v0.1.0-alpha.2 --repo apstndb/spannerplan-rs --pattern 'spannerplan-core*.tgz'
-npm install ./spannerplan-core-0.1.0-alpha.2.tgz
+gh release download v0.1.0-alpha.3 --repo apstndb/spannerplan-rs --pattern 'spannerplan-core*.tgz'
+npm install ./spannerplan-core-0.1.0-alpha.3.tgz
 ```
 
 From a clone or submodule (builds WASM from source):
 
 ```bash
-git clone --depth 1 --branch v0.1.0-alpha.2 https://github.com/apstndb/spannerplan-rs
+git clone --depth 1 --branch v0.1.0-alpha.3 https://github.com/apstndb/spannerplan-rs
 cd spannerplan-rs/js
 npm install
 npm run build -w @spannerplan/core
@@ -79,38 +79,21 @@ YAML/JSON text with the `yaml` package, then sends a JSON object to slim WASM.
 - `Format`: `TRADITIONAL` | `CURRENT` | `COMPACT`
 - `RenderConfig`: `wrapWidth`, `hangingIndent`, `printSections`, scalar-var flags, etc.
 
-## Structured Plantree rows
+## Bundled viewer contract
 
-`plantreeRows` exposes the renderer's pre-order Plantree rows as typed data;
-it does not parse the formatted table. The Node main entry is synchronous (or
-a Promise in browser-like hosts), while the browser entry is always async.
+The `internalPlantreeRowsV1Alpha2*` exports exist only for a checksum-pinned
+`spanner-plan-viewer` bundle. They are deliberately named and typed as
+internal: they are not a supported package API and may change in any
+prerelease without a deprecation window. The numeric wire revision is `2` and
+each occurrence carries `rowId` plus nullable `parentRowId`, so shared DAG
+nodes do not collapse to a single `nodeId`.
 
-```ts
-import { plantreeRows, plantreeRowsOrThrow } from "@spannerplan/core";
-
-const response = await plantreeRows(plan, "CURRENT", { wrapWidth: 80 });
-if ("error" in response) throw new Error(response.error);
-for (const row of response.rows) {
-  console.log(row.nodeId, row.nodeText, row.scalarChildLinks);
-}
-
-const rows = await plantreeRowsOrThrow(plan);
-```
-
-The success envelope is `{ contractVersion: 1, rows }`; failures are
-`{ error }`. Each row has `nodeId`, `treePart`, `nodeText`, `displayName`,
-`predicates`, and ordered scalar child links. A child link includes its raw
-fields plus `isPredicate`, classified from the query-plan API. `PlantreeConfig`
-is deliberately narrow: `wrapWidth`, `hangingIndent`, and
-`disallowUnknownStats` only. See
-[`schema/plantree-rows-v1.schema.json`](../../../schema/plantree-rows-v1.schema.json).
-
-`plantreeRowsWire` accepts protobuf wire bytes. Import the browser entry when
-you always want a Promise:
-
-```ts
-import { plantreeRows } from "@spannerplan/core/browser";
-```
+External callers should use `renderTreeTable` / `renderTreeTableWire`, whose
+formatted reference output remains the supported JavaScript surface. The
+internal schema is recorded in the source repository at
+`schema/plantree-rows-v1alpha2.internal.schema.json` only to keep the co-pinned
+viewer and artifact in lockstep. It is intentionally not shipped in the npm
+package as an external contract.
 
 ### Browser / bundler
 

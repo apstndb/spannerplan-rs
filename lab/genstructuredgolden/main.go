@@ -1,4 +1,5 @@
-// Command genstructuredgolden regenerates Go-derived Plantree v1 JSON goldens.
+// Command genstructuredgolden regenerates the bundled viewer's Go-derived
+// Plantree v1alpha2 JSON goldens.
 package main
 
 import (
@@ -9,13 +10,14 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	sppb "cloud.google.com/go/spanner/apiv1/spannerpb"
 	queryplan "github.com/apstndb/spannerplan"
 	"github.com/apstndb/spannerplan/plantree"
 )
 
-const contractVersion = 1
+const contractVersion = 2
 
 type response struct {
 	ContractVersion int           `json:"contractVersion"`
@@ -23,12 +25,20 @@ type response struct {
 }
 
 type plantreeRow struct {
+	RowID            string              `json:"rowId"`
+	ParentRowID      *string             `json:"parentRowId"`
 	NodeID           int32               `json:"nodeId"`
 	TreePart         string              `json:"treePart"`
 	NodeText         string              `json:"nodeText"`
 	DisplayName      string              `json:"displayName"`
 	Predicates       []string            `json:"predicates"`
 	ScalarChildLinks []plantreeChildLink `json:"scalarChildLinks"`
+}
+
+type occurrence struct {
+	rowID       string
+	parentRowID *string
+	nodeID      int32
 }
 
 type plantreeChildLink struct {
@@ -121,7 +131,7 @@ func project(input []byte) (response, error) {
 
 	// Match the Go reference renderer's CURRENT options. This projection does
 	// not render table text, but node titles and wrapped tree parts are part of
-	// the stable structured contract.
+	// the co-pinned bundled viewer contract.
 	rows, err := plantree.ProcessPlan(
 		qp,
 		plantree.WithQueryPlanOptions(
@@ -133,9 +143,20 @@ func project(input []byte) (response, error) {
 	if err != nil {
 		return response{}, err
 	}
+	occurrences, err := projectOccurrences(qp)
+	if err != nil {
+		return response{}, err
+	}
+	if len(rows) != len(occurrences) {
+		return response{}, fmt.Errorf("occurrence count %d does not match rendered row count %d", len(occurrences), len(rows))
+	}
 
 	projected := make([]plantreeRow, 0, len(rows))
-	for _, row := range rows {
+	for i, row := range rows {
+		occurrence := occurrences[i]
+		if row.ID != occurrence.nodeID {
+			return response{}, fmt.Errorf("occurrence %q node %d does not match rendered node %d", occurrence.rowID, occurrence.nodeID, row.ID)
+		}
 		node := qp.GetNodeByIndex(row.ID)
 		if node == nil {
 			return response{}, fmt.Errorf("row %d does not resolve to a plan node", row.ID)
@@ -145,6 +166,8 @@ func project(input []byte) (response, error) {
 			return response{}, err
 		}
 		projected = append(projected, plantreeRow{
+			RowID:            occurrence.rowID,
+			ParentRowID:      occurrence.parentRowID,
 			NodeID:           row.ID,
 			TreePart:         row.TreePart,
 			NodeText:         row.NodeText,
@@ -155,6 +178,44 @@ func project(input []byte) (response, error) {
 	}
 
 	return response{ContractVersion: contractVersion, Rows: projected}, nil
+}
+
+func projectOccurrences(qp *queryplan.QueryPlan) ([]occurrence, error) {
+	var result []occurrence
+	if err := walkOccurrences(qp, nil, "0", nil, map[int32]bool{}, &result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func walkOccurrences(
+	qp *queryplan.QueryPlan,
+	link *sppb.PlanNode_ChildLink,
+	rowID string,
+	parentRowID *string,
+	ancestors map[int32]bool,
+	result *[]occurrence,
+) error {
+	node := qp.GetNodeByChildLink(link)
+	if ancestors[node.GetIndex()] {
+		return fmt.Errorf("visible plan cycle at node %d", node.GetIndex())
+	}
+	ancestors[node.GetIndex()] = true
+	defer delete(ancestors, node.GetIndex())
+
+	*result = append(*result, occurrence{
+		rowID:       rowID,
+		parentRowID: parentRowID,
+		nodeID:      node.GetIndex(),
+	})
+	for i, child := range qp.VisibleChildLinks(node) {
+		childRowID := rowID + "." + strconv.Itoa(i)
+		parent := rowID
+		if err := walkOccurrences(qp, child, childRowID, &parent, ancestors, result); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func projectScalarChildLinks(

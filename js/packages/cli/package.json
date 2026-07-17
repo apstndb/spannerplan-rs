@@ -1,6 +1,6 @@
 {
   "name": "@spannerplan/cli",
-  "version": "0.1.0-alpha.2",
+  "version": "0.1.0-alpha.3",
   "private": true,
   "description": "rendertree CLI for Cloud Spanner query plans",
   "license": "Apache-2.0",
@@ -24,7 +24,7 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@spannerplan/core": "0.1.0-alpha.2"
+    "@spannerplan/core": "0.1.0-alpha.3"
   },
   "devDependencies": {
     "@types/node": "^22.15.21",

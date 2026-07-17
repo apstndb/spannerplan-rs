@@ -42,15 +42,15 @@ export interface RenderError {
 
 export type RenderResponse = RenderResult | RenderError;
 
-/** Formatting and validation options for the structured Plantree API. */
-export interface PlantreeConfig {
+/** @internal Bundled viewer formatting for the Plantree v1alpha2 contract. */
+export interface InternalPlantreeConfigV1Alpha2 {
   wrapWidth?: number;
   hangingIndent?: boolean;
   disallowUnknownStats?: boolean;
 }
 
-/** A scalar child link attached to a rendered Plantree row. */
-export interface PlantreeChildLink {
+/** @internal A scalar child link in the bundled viewer contract. */
+export interface InternalPlantreeChildLinkV1Alpha2 {
   type: string;
   variable: string;
   description: string;
@@ -60,27 +60,33 @@ export interface PlantreeChildLink {
   isPredicate: boolean;
 }
 
-/** One pre-order row from the structured Plantree representation. */
-export interface PlantreeRow {
+/** @internal One occurrence from the bundled viewer's pre-order traversal. */
+export interface InternalPlantreeRowV1Alpha2 {
+  rowId: string;
+  parentRowId: string | null;
   nodeId: number;
   treePart: string;
   nodeText: string;
   displayName: string;
   predicates: string[];
-  scalarChildLinks: PlantreeChildLink[];
+  scalarChildLinks: InternalPlantreeChildLinkV1Alpha2[];
 }
 
-/** Version 1 success envelope from the structured Plantree WASM API. */
-export interface PlantreeRowsResult {
-  contractVersion: 1;
-  rows: PlantreeRow[];
+/** @internal v1alpha2 success envelope. Numeric wire revision is 2. */
+export interface InternalPlantreeRowsResultV1Alpha2 {
+  contractVersion: 2;
+  rows: InternalPlantreeRowV1Alpha2[];
 }
 
-export interface PlantreeRowsError {
+/** @internal */
+export interface InternalPlantreeRowsErrorV1Alpha2 {
   error: string;
 }
 
-export type PlantreeRowsResponse = PlantreeRowsResult | PlantreeRowsError;
+/** @internal */
+export type InternalPlantreeRowsResponseV1Alpha2 =
+  | InternalPlantreeRowsResultV1Alpha2
+  | InternalPlantreeRowsErrorV1Alpha2;
 
 export interface RendertreeResult {
   kind: "rendered";
@@ -122,10 +128,10 @@ export function isRenderError(
   return "error" in response;
 }
 
-/** True when a structured Plantree response is an error envelope. */
-export function isPlantreeRowsError(
-  response: PlantreeRowsResponse,
-): response is PlantreeRowsError {
+/** @internal True when the bundled Plantree response is an error envelope. */
+export function isInternalPlantreeRowsErrorV1Alpha2(
+  response: InternalPlantreeRowsResponseV1Alpha2,
+): response is InternalPlantreeRowsErrorV1Alpha2 {
   return "error" in response;
 }
 

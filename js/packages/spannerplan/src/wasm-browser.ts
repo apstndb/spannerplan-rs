@@ -7,8 +7,8 @@ export interface WasmBindings {
     format: string | null | undefined,
     config: unknown,
   ): unknown;
-  spannerplanPlantreeRows(args: unknown[]): unknown;
-  spannerplanPlantreeRowsWire(
+  spannerplanInternalPlantreeRowsV1Alpha2(args: unknown[]): unknown;
+  spannerplanInternalPlantreeRowsV1Alpha2Wire(
     planWire: Uint8Array,
     format: string | null | undefined,
     config: unknown,
@@ -25,8 +25,10 @@ export async function getBrowserWasm(): Promise<WasmBindings> {
       return {
         spannerplanRenderTreeTable: mod.spannerplanRenderTreeTable,
         spannerplanRenderTreeTableWire: mod.spannerplanRenderTreeTableWire,
-        spannerplanPlantreeRows: mod.spannerplanPlantreeRows,
-        spannerplanPlantreeRowsWire: mod.spannerplanPlantreeRowsWire,
+        spannerplanInternalPlantreeRowsV1Alpha2:
+          mod.spannerplanInternalPlantreeRowsV1Alpha2,
+        spannerplanInternalPlantreeRowsV1Alpha2Wire:
+          mod.spannerplanInternalPlantreeRowsV1Alpha2Wire,
       };
     });
   }

@@ -2473,7 +2473,7 @@ dependencies = [
 
 [[package]]
 name = "spannerplan"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "serde_json",
  "spannerplan-core",
@@ -2481,7 +2481,7 @@ dependencies = [
 
 [[package]]
 name = "spannerplan-core"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "prost 0.14.4",
  "prost-build",

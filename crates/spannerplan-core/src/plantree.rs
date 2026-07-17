@@ -6,6 +6,7 @@
 //! there only for source compatibility) are not ported;
 //! [`RowWithPredicates::scalar_child_links`] is their replacement.
 
+use alloc::collections::BTreeSet;
 use alloc::format;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
@@ -20,6 +21,12 @@ use crate::treerender::{
 /// One rendered plan row plus predicate and execution metadata.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct RowWithPredicates {
+    /// Viewer-internal occurrence identity derived from the visible traversal
+    /// path. Unlike `id`, this remains unique when a DAG node is rendered
+    /// through more than one parent link.
+    pub row_id: String,
+    /// The parent occurrence identity, or `None` for the root occurrence.
+    pub parent_row_id: Option<String>,
     /// The Spanner PlanNode index for this row.
     pub id: i32,
     /// Everything rendered before `node_text` on each visual line: the ASCII
@@ -146,6 +153,8 @@ pub enum ProcessPlanError {
     NegativeWrapWidth(i32),
     /// Execution-stat extraction failed.
     Stats(StatsError),
+    /// A relational node was reached twice on the current traversal path.
+    Cycle(i32),
     /// An internal renderer invariant was violated (mirrors Go's defensive
     /// row-count / line-count consistency errors).
     Internal(&'static str),
@@ -158,6 +167,9 @@ impl core::fmt::Display for ProcessPlanError {
                 write!(f, "wrap width cannot be negative: {w}")
             }
             ProcessPlanError::Stats(e) => write!(f, "failed to extract execution stats: {e}"),
+            ProcessPlanError::Cycle(id) => {
+                write!(f, "cycle detected at PlanNode index {id}")
+            }
             ProcessPlanError::Internal(msg) => write!(f, "internal invariant violated: {msg}"),
         }
     }
@@ -170,6 +182,8 @@ impl From<StatsError> for ProcessPlanError {
 }
 
 struct RenderedNode {
+    row_id: String,
+    parent_row_id: Option<String>,
     id: i32,
     continuation_anchor: String,
     node_text: String,
@@ -196,7 +210,16 @@ pub fn process_plan(
         title_opts.compact = true;
     }
 
-    let Some(root) = build_rendered_tree(qp, None, opts, &title_opts)? else {
+    let Some(root) = build_rendered_tree(
+        qp,
+        None,
+        "0".to_string(),
+        None,
+        opts,
+        &title_opts,
+        &mut BTreeSet::new(),
+    )?
+    else {
         return Ok(Vec::new());
     };
 
@@ -243,6 +266,8 @@ pub fn process_plan(
             ));
         }
         result.push(RowWithPredicates {
+            row_id: node.row_id,
+            parent_row_id: node.parent_row_id,
             id: node.id,
             tree_part: row.tree_part,
             node_text: row.node_text,
@@ -258,8 +283,11 @@ pub fn process_plan(
 fn build_rendered_tree(
     qp: &QueryPlan,
     link: Option<&ChildLink>,
+    row_id: String,
+    parent_row_id: Option<String>,
     opts: &ProcessPlanOptions,
     title_opts: &NodeTitleOptions,
+    ancestors: &mut BTreeSet<i32>,
 ) -> Result<Option<RenderedNode>, ProcessPlanError> {
     if !qp.is_visible(link) {
         return Ok(None);
@@ -268,6 +296,10 @@ fn build_rendered_tree(
     let sep = if opts.compact { "" } else { " " };
 
     let node = qp.get_node_by_child_link(link);
+    let node_index = node.get_index();
+    if !ancestors.insert(node_index) {
+        return Err(ProcessPlanError::Cycle(node_index));
+    }
     let link_type = qp.get_link_type(link);
     let continuation_anchor = if link_type.is_empty() {
         String::new()
@@ -308,13 +340,26 @@ fn build_rendered_tree(
     let execution_stats = stats::extract(node, opts.disallow_unknown_stats)?;
 
     let mut children = Vec::new();
-    for child_link in qp.visible_child_links(node) {
-        if let Some(rendered) = build_rendered_tree(qp, Some(child_link), opts, title_opts)? {
+    for (index, child_link) in qp.visible_child_links(node).into_iter().enumerate() {
+        let child_row_id = format!("{row_id}.{index}");
+        if let Some(rendered) = build_rendered_tree(
+            qp,
+            Some(child_link),
+            child_row_id,
+            Some(row_id.clone()),
+            opts,
+            title_opts,
+            ancestors,
+        )? {
             children.push(rendered);
         }
     }
 
+    ancestors.remove(&node_index);
+
     Ok(Some(RenderedNode {
+        row_id,
+        parent_row_id,
         id: node.get_index(),
         continuation_anchor,
         node_text,
@@ -413,6 +458,46 @@ mod tests {
         let err =
             process_plan(&qp, &ProcessPlanOptions::default().with_wrap_width(-1)).unwrap_err();
         assert_eq!(err, ProcessPlanError::NegativeWrapWidth(-1));
+    }
+
+    #[test]
+    fn occurrence_ids_distinguish_a_shared_visible_node() {
+        let qp = QueryPlan::new(vec![
+            relational(0, "Root", vec![link(1, ""), link(2, "")]),
+            relational(1, "Left", vec![link(3, "")]),
+            relational(2, "Right", vec![link(3, "")]),
+            relational(3, "Shared", vec![]),
+        ])
+        .unwrap();
+
+        let rows = process_plan(&qp, &ProcessPlanOptions::default()).unwrap();
+        let identities: Vec<_> = rows
+            .iter()
+            .map(|row| (row.id, row.row_id.as_str(), row.parent_row_id.as_deref()))
+            .collect();
+
+        assert_eq!(
+            identities,
+            vec![
+                (0, "0", None),
+                (1, "0.0", Some("0")),
+                (3, "0.0.0", Some("0.0")),
+                (2, "0.1", Some("0")),
+                (3, "0.1.0", Some("0.1")),
+            ]
+        );
+    }
+
+    #[test]
+    fn relational_cycle_is_rejected_without_deduplicating_a_dag() {
+        let qp = QueryPlan::new(vec![
+            relational(0, "Root", vec![link(1, "")]),
+            relational(1, "Child", vec![link(0, "")]),
+        ])
+        .unwrap();
+
+        let err = process_plan(&qp, &ProcessPlanOptions::default()).unwrap_err();
+        assert_eq!(err, ProcessPlanError::Cycle(0));
     }
 
     #[test]

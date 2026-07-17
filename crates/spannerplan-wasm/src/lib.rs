@@ -19,13 +19,16 @@ struct RenderResponse {
     error: Option<String>,
 }
 
-const PLANTREE_ROWS_CONTRACT_VERSION: u32 = 1;
+const INTERNAL_PLANTREE_ROWS_REVISION: u32 = 2;
 
-/// Stable WASM projection of a structured Plantree row. Internal core rows
-/// intentionally remain serialization-agnostic.
+/// Bundled viewer projection of a structured Plantree occurrence.
+///
+/// This is a co-pinned internal contract, not an external WASM API.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct PlantreeRowDto {
+    row_id: String,
+    parent_row_id: Option<String>,
     node_id: i32,
     tree_part: String,
     node_text: String,
@@ -59,6 +62,8 @@ struct PlantreeRowsResponse {
 impl From<spannerplan::core::plantree::RowWithPredicates> for PlantreeRowDto {
     fn from(row: spannerplan::core::plantree::RowWithPredicates) -> Self {
         Self {
+            row_id: row.row_id,
+            parent_row_id: row.parent_row_id,
             node_id: row.id,
             tree_part: row.tree_part,
             node_text: row.node_text,
@@ -180,7 +185,7 @@ fn plantree_rows_from_plan_nodes(
     match parse_format(format) {
         Ok(format) => match plantree_rows(&plan_nodes, format, &config) {
             Ok(rows) => PlantreeRowsResponse {
-                contract_version: Some(PLANTREE_ROWS_CONTRACT_VERSION),
+                contract_version: Some(INTERNAL_PLANTREE_ROWS_REVISION),
                 rows: Some(rows.into_iter().map(PlantreeRowDto::from).collect()),
                 error: None,
             },
@@ -204,6 +209,12 @@ fn plantree_rows_error(error: String) -> PlantreeRowsResponse {
         rows: None,
         error: Some(error),
     }
+}
+
+fn plantree_rows_to_js(response: &PlantreeRowsResponse) -> JsValue {
+    response
+        .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
+        .expect("Plantree response contains only JSON-compatible values")
 }
 
 #[wasm_bindgen(js_name = spannerplanRenderTreeTable)]
@@ -240,9 +251,9 @@ pub fn spannerplan_render_tree_table(args: JsValue) -> JsValue {
     }
 }
 
-/// Structured Plantree rows. `args` is `[plan, format?, config?]`.
-#[wasm_bindgen(js_name = spannerplanPlantreeRows)]
-pub fn spannerplan_plantree_rows(args: JsValue) -> JsValue {
+/// Viewer-internal Plantree v1alpha2 rows. `args` is `[plan, format?, config?]`.
+#[wasm_bindgen(js_name = spannerplanInternalPlantreeRowsV1Alpha2)]
+pub fn spannerplan_internal_plantree_rows_v1alpha2(args: JsValue) -> JsValue {
     let result = (|| -> Result<PlantreeRowsResponse, String> {
         if !js_sys::Array::is_array(&args) {
             return Err("arguments must be an array".to_string());
@@ -261,7 +272,7 @@ pub fn spannerplan_plantree_rows(args: JsValue) -> JsValue {
         Ok(plantree_rows_from_plan_nodes(plan_nodes, &format, config))
     })();
 
-    serde_wasm_bindgen::to_value(&result.unwrap_or_else(plantree_rows_error)).unwrap()
+    plantree_rows_to_js(&result.unwrap_or_else(plantree_rows_error))
 }
 
 #[cfg(feature = "cli")]
@@ -370,10 +381,10 @@ pub fn spannerplan_render_tree_table_wire(
     }
 }
 
-/// Wire-bytes variant of [`spannerplan_plantree_rows`].
+/// Wire-bytes variant of [`spannerplan_internal_plantree_rows_v1alpha2`].
 #[cfg(feature = "wire")]
-#[wasm_bindgen(js_name = spannerplanPlantreeRowsWire)]
-pub fn spannerplan_plantree_rows_wire(
+#[wasm_bindgen(js_name = spannerplanInternalPlantreeRowsV1Alpha2Wire)]
+pub fn spannerplan_internal_plantree_rows_v1alpha2_wire(
     plan_wire: js_sys::Uint8Array,
     format: Option<String>,
     config: JsValue,
@@ -387,7 +398,7 @@ pub fn spannerplan_plantree_rows_wire(
         Ok(plantree_rows_from_plan_nodes(plan_nodes, &format, config))
     })();
 
-    serde_wasm_bindgen::to_value(&result.unwrap_or_else(plantree_rows_error)).unwrap()
+    plantree_rows_to_js(&result.unwrap_or_else(plantree_rows_error))
 }
 
 #[cfg(test)]
@@ -405,10 +416,12 @@ mod tests {
     }
 
     #[test]
-    fn plantree_rows_response_serializes_stable_dto_shape() {
+    fn plantree_rows_response_serializes_internal_v1alpha2_shape() {
         let response = PlantreeRowsResponse {
-            contract_version: Some(1),
+            contract_version: Some(2),
             rows: Some(vec![PlantreeRowDto {
+                row_id: "0.1".into(),
+                parent_row_id: Some("0".into()),
                 node_id: 7,
                 tree_part: "+- ".into(),
                 node_text: "Scan".into(),
@@ -427,7 +440,7 @@ mod tests {
         };
         assert_eq!(
             serde_json::to_string(&response).unwrap(),
-            r#"{"contractVersion":1,"rows":[{"nodeId":7,"treePart":"+- ","nodeText":"Scan","displayName":"Scan","predicates":["Condition: active"],"scalarChildLinks":[{"type":"Condition","variable":"","description":"active","displayName":"Function","childIndex":8,"isPredicate":true}]}]}"#
+            r#"{"contractVersion":2,"rows":[{"rowId":"0.1","parentRowId":"0","nodeId":7,"treePart":"+- ","nodeText":"Scan","displayName":"Scan","predicates":["Condition: active"],"scalarChildLinks":[{"type":"Condition","variable":"","description":"active","displayName":"Function","childIndex":8,"isPredicate":true}]}]}"#
         );
     }
 

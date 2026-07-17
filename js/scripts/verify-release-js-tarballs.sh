@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Verify that the release packages can be installed in clean consumers. The
 # browser consumer is built with Vite and exercised in a real headless browser
-# so the browser export, dynamic WASM load, and structured Plantree contract are
+# so the browser export, dynamic WASM load, and bundled viewer contract are
 # covered by the release gate.
 set -euo pipefail
 
@@ -107,7 +107,7 @@ run_browser_smoke() {
   wait "$server_pid" 2>/dev/null || true
   server_pid=""
   grep -Eq 'data-status="ok"' "$dom"
-  grep -Eq '"contractVersion":1' "$dom"
+  grep -Eq '"contractVersion":2' "$dom"
   grep -Eq '"rowCount":[1-9][0-9]*' "$dom"
   grep -Eq '"rootNodeId":0' "$dom"
   grep -Fq '"rootNodeText":"Distributed Union on AlbumsByAlbumTitle &lt;Row&gt;"' "$dom"

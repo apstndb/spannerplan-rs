@@ -1,7 +1,9 @@
 {
-  "contractVersion": 1,
+  "contractVersion": 2,
   "rows": [
     {
+      "rowId": "0",
+      "parentRowId": null,
       "nodeId": 0,
       "treePart": "",
       "nodeText": "Distributed Union on AlbumsByAlbumTitle \u003cRow\u003e",
@@ -21,6 +23,8 @@
       ]
     },
     {
+      "rowId": "0.0",
+      "parentRowId": "0",
       "nodeId": 1,
       "treePart": "+- ",
       "nodeText": "Distributed Cross Apply \u003cRow\u003e",
@@ -40,6 +44,8 @@
       ]
     },
     {
+      "rowId": "0.0.0",
+      "parentRowId": "0.0",
       "nodeId": 2,
       "treePart": "   +- ",
       "nodeText": "[Input] Create Batch \u003cRow\u003e",
@@ -57,6 +63,8 @@
       ]
     },
     {
+      "rowId": "0.0.0.0",
+      "parentRowId": "0.0.0",
       "nodeId": 3,
       "treePart": "   |  +- ",
       "nodeText": "Local Distributed Union \u003cRow\u003e",
@@ -65,6 +73,8 @@
       "scalarChildLinks": []
     },
     {
+      "rowId": "0.0.0.0.0",
+      "parentRowId": "0.0.0.0",
       "nodeId": 4,
       "treePart": "   |     +- ",
       "nodeText": "Compute Struct \u003cRow\u003e",
@@ -98,6 +108,8 @@
       ]
     },
     {
+      "rowId": "0.0.0.0.0.0",
+      "parentRowId": "0.0.0.0.0",
       "nodeId": 5,
       "treePart": "   |        +- ",
       "nodeText": "Filter Scan \u003cRow\u003e (seekable_key_size: 1)",
@@ -117,6 +129,8 @@
       ]
     },
     {
+      "rowId": "0.0.0.0.0.0.0",
+      "parentRowId": "0.0.0.0.0.0",
       "nodeId": 6,
       "treePart": "   |           +- ",
       "nodeText": "Index Scan on AlbumsByAlbumTitle \u003cRow\u003e (scan_method: Row)",
@@ -160,6 +174,8 @@
       ]
     },
     {
+      "rowId": "0.0.1",
+      "parentRowId": "0.0",
       "nodeId": 22,
       "treePart": "   +- ",
       "nodeText": "[Map] Serialize Result \u003cRow\u003e",
@@ -201,6 +217,8 @@
       ]
     },
     {
+      "rowId": "0.0.1.0",
+      "parentRowId": "0.0.1",
       "nodeId": 23,
       "treePart": "      +- ",
       "nodeText": "Cross Apply \u003cRow\u003e",
@@ -209,6 +227,8 @@
       "scalarChildLinks": []
     },
     {
+      "rowId": "0.0.1.0.0",
+      "parentRowId": "0.0.1.0",
       "nodeId": 24,
       "treePart": "         +- ",
       "nodeText": "[Input] KeyRangeAccumulator \u003cRow\u003e",
@@ -217,6 +237,8 @@
       "scalarChildLinks": []
     },
     {
+      "rowId": "0.0.1.0.0.0",
+      "parentRowId": "0.0.1.0.0",
       "nodeId": 25,
       "treePart": "         |  +- ",
       "nodeText": "Batch Scan on $v2 \u003cRow\u003e (scan_method: Row)",
@@ -250,6 +272,8 @@
       ]
     },
     {
+      "rowId": "0.0.1.0.1",
+      "parentRowId": "0.0.1.0",
       "nodeId": 29,
       "treePart": "         +- ",
       "nodeText": "[Map] Local Distributed Union \u003cRow\u003e",
@@ -258,6 +282,8 @@
       "scalarChildLinks": []
     },
     {
+      "rowId": "0.0.1.0.1.0",
+      "parentRowId": "0.0.1.0.1",
       "nodeId": 30,
       "treePart": "            +- ",
       "nodeText": "Filter Scan \u003cRow\u003e (seekable_key_size: 0)",
@@ -266,6 +292,8 @@
       "scalarChildLinks": []
     },
     {
+      "rowId": "0.0.1.0.1.0.0",
+      "parentRowId": "0.0.1.0.1.0",
       "nodeId": 31,
       "treePart": "               +- ",
       "nodeText": "Table Scan on Albums \u003cRow\u003e (scan_method: Row)",

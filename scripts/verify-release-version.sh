@@ -33,7 +33,8 @@ fi
 check_version() {
   local label="$1"
   local actual="$2"
-  if [[ "$actual" != "$EXPECTED_VERSION" ]]; then
+  local expected="${3:-$EXPECTED_VERSION}"
+  if [[ "$actual" != "$expected" ]]; then
     echo "error: $label version '$actual' does not match tag '$TAG'" >&2
     exit 1
   fi
@@ -71,5 +72,15 @@ if ((FOUND_CLI == 0)); then
   echo "error: could not find the @spannerplan/cli package manifest under js/packages" >&2
   exit 1
 fi
+
+PYTHON_VERSION="$(awk -F '"' '/^version[[:space:]]*=/ { print $2; exit }' "$ROOT/bindings/python/pyproject.toml")"
+PHP_VERSION="$(node -p 'require(process.argv[1]).version' "$ROOT/bindings/php/composer.json")"
+JAVA_VERSION="$(awk -F '[<>]' '/^[[:space:]]*<version>/ { print $3; exit }' "$ROOT/bindings/java/pom.xml")"
+RUBY_VERSION="$(awk -F "'" '/^[[:space:]]*s\.version[[:space:]]*=/ { print $2; exit }' "$ROOT/bindings/ruby/spannerplan.gemspec")"
+
+check_version "Python binding" "$PYTHON_VERSION"
+check_version "PHP binding" "$PHP_VERSION"
+check_version "Java binding" "$JAVA_VERSION"
+check_version "Ruby binding" "$RUBY_VERSION" "${EXPECTED_VERSION//-/.}"
 
 echo "Release tag $TAG matches all release package versions."

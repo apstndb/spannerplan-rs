@@ -65,9 +65,9 @@ each [GitHub Release](https://github.com/apstndb/spannerplan-rs/releases):
 Download for your platform:
 
 ```bash
-gh release download v0.1.0-alpha.2 --repo apstndb/spannerplan-rs \
-  --pattern 'spannerplan-ffi-0.1.0-alpha.2-aarch64-apple-darwin.tar.gz'
-tar -xzf spannerplan-ffi-0.1.0-alpha.2-aarch64-apple-darwin.tar.gz
+gh release download v0.1.0-alpha.3 --repo apstndb/spannerplan-rs \
+  --pattern 'spannerplan-ffi-0.1.0-alpha.3-aarch64-apple-darwin.tar.gz'
+tar -xzf spannerplan-ffi-0.1.0-alpha.3-aarch64-apple-darwin.tar.gz
 export SPANNERPLAN_FFI_DIR="$PWD"
 cd bindings/python && pytest
 ```
