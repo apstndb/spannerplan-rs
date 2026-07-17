@@ -223,10 +223,34 @@ cmake --build bindings/cpp/build
 
 ## Verification
 
-After a release:
+The tag workflow first verifies that `vTAG` matches the Cargo workspace version
+and both JavaScript package versions. It then builds, archives, downloads, and
+checksums all release assets and runs the consumer smoke tests. A successful
+workflow deliberately leaves a verified **draft** GitHub Release; it never
+publishes the release automatically.
+
+Publishing is a separate, authorized manual step:
+
+1. Prepare curated release notes outside this repository. Include the release
+   highlights while preserving the draft's mechanical Rust, JavaScript, FFI,
+   and Python install details. This project does not keep a per-version
+   changelog in the repository.
+2. Replace the draft body and inspect the complete release, including its
+   assets and draft/prerelease state:
+
+   ```bash
+   gh release edit TAG --notes-file FILE
+   gh release view TAG --json tagName,isDraft,isPrerelease,body,assets
+   ```
+
+3. Only after that inspection, publish the verified draft:
+
+   ```bash
+   gh release edit TAG --draft=false
+   ```
+
+After publication, verify all supported consumer paths with one command:
 
 ```bash
-bash scripts/verify-release-consumers.sh v0.1.0-alpha.2
+bash scripts/verify-release-consumers.sh TAG
 ```
-
-CI runs Rust git + Python git checks in the Release workflow (`verify-consumers` job).
