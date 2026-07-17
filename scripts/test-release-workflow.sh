@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Keep tag lookup data separate from jq source in the release workflow, and
-# ensure the post-create lookup delegates to the retrying exact-resource helper.
+# ensure the post-create lookup delegates to the retrying draft-list helper.
 # The grep expressions below intentionally match literal shell and jq source.
 # shellcheck disable=SC2016
 set -euo pipefail
@@ -43,7 +43,7 @@ fi
 RESOLVER_INVOCATION="$(grep -F -A2 'scripts/resolve-release-id.sh' "$WORKFLOW")"
 if ! grep -F -- '--repo "$GITHUB_REPOSITORY"' <<<"$RESOLVER_INVOCATION" >/dev/null || \
   ! grep -F -- '--tag "$TAG"' <<<"$RESOLVER_INVOCATION" >/dev/null; then
-  echo "error: release workflow does not use the exact-resource release-ID resolver" >&2
+  echo "error: release workflow does not use the draft-list release-ID resolver" >&2
   exit 1
 fi
 

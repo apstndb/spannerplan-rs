@@ -15,12 +15,12 @@ cat >"$MOCK_BIN/gh" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
-[[ "$1" == "api" && "$2" == "--jq" && "$3" == ".id" ]] || {
+[[ "$1" == "api" && "$2" == "--paginate" ]] || {
   echo "unexpected gh arguments: $*" >&2
   exit 1
 }
-[[ "$4" == "repos/apstndb/spannerplan-rs/releases/tags/v0.1.0-alpha.3" ]] || {
-  echo "unexpected release endpoint: $4" >&2
+[[ "$3" == "repos/apstndb/spannerplan-rs/releases?per_page=100" ]] || {
+  echo "unexpected release endpoint: $3" >&2
   exit 1
 }
 
@@ -32,26 +32,28 @@ attempt=$((attempt + 1))
 printf '%s\n' "$attempt" >"$MOCK_STATE"
 
 case "$MOCK_MODE" in
-  not-found-then-success)
-    if ((attempt < 3)); then
-      echo 'gh: Not Found (HTTP 404)' >&2
-      exit 1
-    fi
-    printf '%s\n' '355929622'
-    ;;
   empty-then-success)
     if ((attempt >= 3)); then
-      printf '%s\n' '355929622'
+      printf '%s\n' '[{"id":355929621,"tag_name":"v0.1.0-alpha.3","draft":false},{"id":355929622,"tag_name":"v0.1.0-alpha.3","draft":true}]'
+    else
+      printf '%s\n' '[]'
     fi
     ;;
   always-empty)
+    printf '%s\n' '[]'
     ;;
   duplicate)
-    printf '%s\n' '355929622' '355929623'
+    printf '%s\n' '[{"id":355929622,"tag_name":"v0.1.0-alpha.3","draft":true},{"id":355929623,"tag_name":"v0.1.0-alpha.3","draft":true}]'
     ;;
   fatal)
     echo 'gh: Resource not accessible by integration (HTTP 403)' >&2
     exit 1
+    ;;
+  malformed)
+    printf '%s\n' '<html>not JSON</html>'
+    ;;
+  nonnumeric)
+    printf '%s\n' '[{"id":"not-a-number","tag_name":"v0.1.0-alpha.3","draft":true}]'
     ;;
   *)
     echo "unknown mock mode: $MOCK_MODE" >&2
@@ -77,18 +79,13 @@ output="$(run_resolver 4 empty-then-success "$state")"
 test "$output" = '355929622'
 test "$(<"$state")" = '3'
 
-state="$WORK/not-found-then-success.state"
-output="$(run_resolver 4 not-found-then-success "$state")"
-test "$output" = '355929622'
-test "$(<"$state")" = '3'
-
 state="$WORK/always-empty.state"
 if run_resolver 3 always-empty "$state" >"$WORK/always-empty.out" 2>"$WORK/always-empty.err"; then
   echo "error: always-empty lookup unexpectedly succeeded" >&2
   exit 1
 fi
 test "$(<"$state")" = '3'
-grep -F "error: release ID for tag 'v0.1.0-alpha.3' was not visible after 3 attempts" "$WORK/always-empty.err" >/dev/null
+grep -F "error: draft release ID for tag 'v0.1.0-alpha.3' was not visible after 3 attempts" "$WORK/always-empty.err" >/dev/null
 
 state="$WORK/duplicate.state"
 if run_resolver 3 duplicate "$state" >"$WORK/duplicate.out" 2>"$WORK/duplicate.err"; then
@@ -106,5 +103,21 @@ fi
 test "$(<"$state")" = '1'
 grep -F "error: release lookup for tag 'v0.1.0-alpha.3' failed:" "$WORK/fatal.err" >/dev/null
 grep -F 'gh: Resource not accessible by integration (HTTP 403)' "$WORK/fatal.err" >/dev/null
+
+state="$WORK/malformed.state"
+if run_resolver 3 malformed "$state" >"$WORK/malformed.out" 2>"$WORK/malformed.err"; then
+  echo "error: malformed lookup unexpectedly succeeded" >&2
+  exit 1
+fi
+test "$(<"$state")" = '1'
+grep -F "error: release list for tag 'v0.1.0-alpha.3' was not valid GitHub API JSON" "$WORK/malformed.err" >/dev/null
+
+state="$WORK/nonnumeric.state"
+if run_resolver 3 nonnumeric "$state" >"$WORK/nonnumeric.out" 2>"$WORK/nonnumeric.err"; then
+  echo "error: nonnumeric lookup unexpectedly succeeded" >&2
+  exit 1
+fi
+test "$(<"$state")" = '1'
+grep -F "error: release lookup for tag 'v0.1.0-alpha.3' returned a non-numeric release ID" "$WORK/nonnumeric.err" >/dev/null
 
 echo "release ID resolver smoke tests passed"

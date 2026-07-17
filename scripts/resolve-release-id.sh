@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Resolve a just-created draft release through its exact REST resource.
+# Resolve a just-created draft release through the authenticated releases list.
 #
 # GitHub's paginated releases list can briefly omit a newly created draft. The
-# tag endpoint is the authoritative single-resource lookup; retry its empty or
-# not-yet-visible response without ever creating, deleting, or editing a
-# release.
+# get-by-tag endpoint exposes only published releases, so it cannot resolve the
+# draft created by this workflow. Retry only an empty exact-tag draft match;
+# never create, delete, edit, publish, or retag a release here.
 set -euo pipefail
 
 usage() {
@@ -53,11 +53,7 @@ MAX_ATTEMPTS="${RELEASE_ID_MAX_ATTEMPTS:-6}"
   exit 2
 }
 
-# The tag is data, not shell or jq source. It is URI-encoded before becoming
-# the final path component, so unusual valid tag characters cannot alter the
-# API route.
-ENCODED_TAG="$(jq -rn --arg tag "$TAG" '$tag | @uri')"
-ENDPOINT="repos/${REPO}/releases/tags/${ENCODED_TAG}"
+ENDPOINT="repos/${REPO}/releases?per_page=100"
 DELAY_SECONDS=1
 ERROR_FILE="$(mktemp)"
 trap 'rm -f "$ERROR_FILE"' EXIT
@@ -65,8 +61,13 @@ trap 'rm -f "$ERROR_FILE"' EXIT
 for ((attempt = 1; attempt <= MAX_ATTEMPTS; attempt++)); do
   RESPONSE=""
   : >"$ERROR_FILE"
-  if RESPONSE="$(gh api --jq '.id' "$ENDPOINT" 2>"$ERROR_FILE")"; then
-    RELEASE_IDS="$(printf '%s\n' "$RESPONSE" | sed '/^$/d')"
+  if RESPONSE="$(gh api --paginate "$ENDPOINT" 2>"$ERROR_FILE")"; then
+    if ! RELEASE_IDS="$(printf '%s\n' "$RESPONSE" | jq -rs --arg tag "$TAG" \
+      '.[][] | select(.tag_name == $tag and .draft == true) | .id')"; then
+      echo "error: release list for tag '$TAG' was not valid GitHub API JSON" >&2
+      exit 1
+    fi
+    RELEASE_IDS="$(printf '%s\n' "$RELEASE_IDS" | sed '/^$/d')"
     RELEASE_ID_COUNT="$(printf '%s\n' "$RELEASE_IDS" | awk 'NF { count++ } END { print count + 0 }')"
     case "$RELEASE_ID_COUNT" in
       1)
@@ -78,15 +79,15 @@ for ((attempt = 1; attempt <= MAX_ATTEMPTS; attempt++)); do
         exit 1
         ;;
       0)
-        # A successful empty response is the observed eventual-consistency
-        # failure mode. Treat it exactly like a not-yet-visible draft.
+        # A successful list response without the exact-tag draft is the
+        # observed eventual-consistency failure mode.
         ;;
       *)
         echo "error: release lookup for tag '$TAG' returned multiple release IDs" >&2
         exit 1
         ;;
     esac
-  elif ! grep -Eq '\(HTTP 404\)[[:space:]]*$' "$ERROR_FILE"; then
+  else
     echo "error: release lookup for tag '$TAG' failed:" >&2
     sed 's/^/  /' "$ERROR_FILE" >&2
     exit 1
@@ -101,5 +102,5 @@ for ((attempt = 1; attempt <= MAX_ATTEMPTS; attempt++)); do
   DELAY_SECONDS=$((DELAY_SECONDS * 2))
 done
 
-echo "error: release ID for tag '$TAG' was not visible after $MAX_ATTEMPTS attempts; verify the existing draft before retrying the workflow" >&2
+echo "error: draft release ID for tag '$TAG' was not visible after $MAX_ATTEMPTS attempts; inspect the existing draft before retrying the workflow" >&2
 exit 1
