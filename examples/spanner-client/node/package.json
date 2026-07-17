@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@google-cloud/spanner": "^7.21.0",
+    "@google-cloud/spanner": "^8.0.0",
     "@spannerplan/core": "file:../../../js/packages/spannerplan"
   }
 }
