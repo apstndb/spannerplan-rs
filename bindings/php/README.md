@@ -17,6 +17,11 @@ PHP 8+ [FFI](https://www.php.net/manual/en/book.ffi.php) wrapper around
 - **Wire render** — `renderTreeTableWire($planWire, $mode, $format)` accepts protobuf
   wire-encoded `QueryPlan` bytes (see `examples/spanner-client/php`).
 
+Release FFI assets are versioned target-triple archives rather than loose
+libraries. Extract the matching archive before setting `SPANNERPLAN_FFI_LIB`
+or `SPANNERPLAN_FFI_DIR`; archives include the natural library filename,
+`spannerplan.h`, and `LICENSE`.
+
 See also: [bindings overview](../README.md#ffi-bindings-vs-native-implementations).
 
 ## Local development

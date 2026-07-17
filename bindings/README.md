@@ -18,9 +18,13 @@ do not commit `.env`.
 
 Set `SPANNERPLAN_FFI_LIB` to the platform cdylib when auto-detection fails
 (`target/debug/libspannerplan_ffi.dylib`, `.so`, or `spannerplan_ffi.dll`).
+Release downloads are versioned target-triple archives; extract the archive
+before setting the variable. Each archive contains the natural library name,
+`spannerplan.h`, and `LICENSE`.
 All FFI bindings also honor `SPANNERPLAN_FFI_DIR` (directory containing the
-platform library) and auto-detect `target/{debug,release}` plus downloaded
-Release FFI artifacts under `artifacts/spannerplan-ffi-<platform>/`. See
+platform library). After extracting a Release FFI archive, pass that directory
+explicitly; local compatibility auto-detection may also inspect
+`target/{debug,release}`. See
 per-language READMEs for resolution order.
 
 ### Native library resolution (FFI bindings)
@@ -30,7 +34,7 @@ per-language READMEs for resolution order.
 | 1 | `SPANNERPLAN_FFI_LIB` — absolute path to the cdylib |
 | 2 | `SPANNERPLAN_FFI_DIR` / platform library name |
 | 3 | Monorepo `target/debug` or `target/release` |
-| 4 | `artifacts/spannerplan-ffi-<platform>/` at repo root (CI downloads) |
+| 4 | Explicit `SPANNERPLAN_FFI_DIR` pointing at an extracted release archive |
 
 ## CI
 
@@ -68,14 +72,14 @@ JavaScript (`@spannerplan/core` WASM) do not use this cdylib — see
 
 The [Release](../.github/workflows/release.yml) workflow publishes
 [GitHub Releases](https://github.com/apstndb/spannerplan-rs/releases) with
-`spannerplan-ffi` builds for:
+versioned `spannerplan-ffi-<version>-<target-triple>` archives for:
 
 | Artifact | Platform |
 |----------|----------|
-| `spannerplan-ffi-linux-x64` | Linux x86_64 (`libspannerplan_ffi.so`) |
-| `spannerplan-ffi-macos-arm64` | macOS Apple Silicon (`libspannerplan_ffi.dylib`) |
-| `spannerplan-ffi-macos-x64` | macOS Intel (`libspannerplan_ffi.dylib`) |
-| `spannerplan-ffi-windows-x64` | Windows x64 (`spannerplan_ffi.dll`) |
+| `spannerplan-ffi-<version>-x86_64-unknown-linux-gnu.tar.gz` | Linux x86_64 (`libspannerplan_ffi.so`) |
+| `spannerplan-ffi-<version>-aarch64-apple-darwin.tar.gz` | macOS Apple Silicon (`libspannerplan_ffi.dylib`) |
+| `spannerplan-ffi-<version>-x86_64-apple-darwin.tar.gz` | macOS Intel (`libspannerplan_ffi.dylib`) |
+| `spannerplan-ffi-<version>-x86_64-pc-windows-msvc.zip` | Windows x64 (`spannerplan_ffi.dll`) |
 
 Other architectures (Linux arm64, musl/Alpine, etc.) require building the
 cdylib yourself with `cargo build -p spannerplan-ffi --release`.

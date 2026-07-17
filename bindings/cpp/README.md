@@ -15,6 +15,11 @@ CMake examples linking `spannerplan.h` and `libspannerplan_ffi`.
 - **FFI memory** — call `spannerplan_string_free` on every non-NULL return
   from render entry points (see `spannerplan.h`).
 
+Release FFI assets are versioned target-triple archives rather than loose
+libraries and headers. Extract the matching archive before configuring
+`SPANNERPLAN_FFI_LIB` or `SPANNERPLAN_FFI_DIR`; archives include the natural
+library filename, `spannerplan.h`, and `LICENSE`.
+
 See also: [bindings overview](../README.md#ffi-bindings-vs-native-implementations).
 
 ## Local development
@@ -51,7 +56,7 @@ Override the library path when needed:
 
 ```bash
 export SPANNERPLAN_FFI_LIB="$PWD/target/debug/libspannerplan_ffi.dylib"  # or .so on Linux
-# or: export SPANNERPLAN_FFI_DIR="$PWD/artifacts/spannerplan-ffi-macos-arm64"
+# or: export SPANNERPLAN_FFI_DIR="$PWD/extracted-spannerplan-ffi"
 cd bindings/cpp
 cmake -S . -B build -DSPANNERPLAN_FFI_LIB="$SPANNERPLAN_FFI_LIB"
 ctest --test-dir build --output-on-failure

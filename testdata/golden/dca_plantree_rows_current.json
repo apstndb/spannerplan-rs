@@ -1,0 +1,312 @@
+{
+  "contractVersion": 1,
+  "rows": [
+    {
+      "nodeId": 0,
+      "treePart": "",
+      "nodeText": "Distributed Union on AlbumsByAlbumTitle \u003cRow\u003e",
+      "displayName": "Distributed Union",
+      "predicates": [
+        "Split Range: (STARTS_WITH($AlbumTitle, 'T') AND ($AlbumTitle LIKE 'T%e'))"
+      ],
+      "scalarChildLinks": [
+        {
+          "type": "Split Range",
+          "variable": "",
+          "description": "(STARTS_WITH($AlbumTitle, 'T') AND ($AlbumTitle LIKE 'T%e'))",
+          "displayName": "Function",
+          "childIndex": 54,
+          "isPredicate": true
+        }
+      ]
+    },
+    {
+      "nodeId": 1,
+      "treePart": "+- ",
+      "nodeText": "Distributed Cross Apply \u003cRow\u003e",
+      "displayName": "Distributed Cross Apply",
+      "predicates": [
+        "Split Range: (($SingerId' = $SingerId) AND ($AlbumId' = $AlbumId))"
+      ],
+      "scalarChildLinks": [
+        {
+          "type": "Split Range",
+          "variable": "",
+          "description": "(($SingerId' = $SingerId) AND ($AlbumId' = $AlbumId))",
+          "displayName": "Function",
+          "childIndex": 47,
+          "isPredicate": true
+        }
+      ]
+    },
+    {
+      "nodeId": 2,
+      "treePart": "   +- ",
+      "nodeText": "[Input] Create Batch \u003cRow\u003e",
+      "displayName": "Create Batch",
+      "predicates": [],
+      "scalarChildLinks": [
+        {
+          "type": "",
+          "variable": "v2.Batch",
+          "description": "$v1",
+          "displayName": "Reference",
+          "childIndex": 21,
+          "isPredicate": false
+        }
+      ]
+    },
+    {
+      "nodeId": 3,
+      "treePart": "   |  +- ",
+      "nodeText": "Local Distributed Union \u003cRow\u003e",
+      "displayName": "Distributed Union",
+      "predicates": [],
+      "scalarChildLinks": []
+    },
+    {
+      "nodeId": 4,
+      "treePart": "   |     +- ",
+      "nodeText": "Compute Struct \u003cRow\u003e",
+      "displayName": "Compute Struct",
+      "predicates": [],
+      "scalarChildLinks": [
+        {
+          "type": "",
+          "variable": "v1.AlbumId",
+          "description": "$AlbumId",
+          "displayName": "Reference",
+          "childIndex": 18,
+          "isPredicate": false
+        },
+        {
+          "type": "",
+          "variable": "v1.AlbumTitle",
+          "description": "$AlbumTitle",
+          "displayName": "Reference",
+          "childIndex": 19,
+          "isPredicate": false
+        },
+        {
+          "type": "",
+          "variable": "v1.SingerId",
+          "description": "$SingerId",
+          "displayName": "Reference",
+          "childIndex": 20,
+          "isPredicate": false
+        }
+      ]
+    },
+    {
+      "nodeId": 5,
+      "treePart": "   |        +- ",
+      "nodeText": "Filter Scan \u003cRow\u003e (seekable_key_size: 1)",
+      "displayName": "Filter Scan",
+      "predicates": [
+        "Residual Condition: ($AlbumTitle LIKE 'T%e')"
+      ],
+      "scalarChildLinks": [
+        {
+          "type": "Residual Condition",
+          "variable": "",
+          "description": "($AlbumTitle LIKE 'T%e')",
+          "displayName": "Function",
+          "childIndex": 17,
+          "isPredicate": true
+        }
+      ]
+    },
+    {
+      "nodeId": 6,
+      "treePart": "   |           +- ",
+      "nodeText": "Index Scan on AlbumsByAlbumTitle \u003cRow\u003e (scan_method: Row)",
+      "displayName": "Scan",
+      "predicates": [
+        "Seek Condition: STARTS_WITH($AlbumTitle, 'T')"
+      ],
+      "scalarChildLinks": [
+        {
+          "type": "",
+          "variable": "AlbumId",
+          "description": "AlbumId",
+          "displayName": "Reference",
+          "childIndex": 7,
+          "isPredicate": false
+        },
+        {
+          "type": "",
+          "variable": "AlbumTitle",
+          "description": "AlbumTitle",
+          "displayName": "Reference",
+          "childIndex": 8,
+          "isPredicate": false
+        },
+        {
+          "type": "",
+          "variable": "SingerId",
+          "description": "SingerId",
+          "displayName": "Reference",
+          "childIndex": 9,
+          "isPredicate": false
+        },
+        {
+          "type": "Seek Condition",
+          "variable": "",
+          "description": "STARTS_WITH($AlbumTitle, 'T')",
+          "displayName": "Function",
+          "childIndex": 16,
+          "isPredicate": true
+        }
+      ]
+    },
+    {
+      "nodeId": 22,
+      "treePart": "   +- ",
+      "nodeText": "[Map] Serialize Result \u003cRow\u003e",
+      "displayName": "Serialize Result",
+      "predicates": [],
+      "scalarChildLinks": [
+        {
+          "type": "",
+          "variable": "",
+          "description": "$batched_SingerId",
+          "displayName": "Reference",
+          "childIndex": 43,
+          "isPredicate": false
+        },
+        {
+          "type": "",
+          "variable": "",
+          "description": "$batched_AlbumId",
+          "displayName": "Reference",
+          "childIndex": 44,
+          "isPredicate": false
+        },
+        {
+          "type": "",
+          "variable": "",
+          "description": "$batched_AlbumTitle",
+          "displayName": "Reference",
+          "childIndex": 45,
+          "isPredicate": false
+        },
+        {
+          "type": "",
+          "variable": "",
+          "description": "$MarketingBudget",
+          "displayName": "Reference",
+          "childIndex": 46,
+          "isPredicate": false
+        }
+      ]
+    },
+    {
+      "nodeId": 23,
+      "treePart": "      +- ",
+      "nodeText": "Cross Apply \u003cRow\u003e",
+      "displayName": "Cross Apply",
+      "predicates": [],
+      "scalarChildLinks": []
+    },
+    {
+      "nodeId": 24,
+      "treePart": "         +- ",
+      "nodeText": "[Input] KeyRangeAccumulator \u003cRow\u003e",
+      "displayName": "KeyRangeAccumulator",
+      "predicates": [],
+      "scalarChildLinks": []
+    },
+    {
+      "nodeId": 25,
+      "treePart": "         |  +- ",
+      "nodeText": "Batch Scan on $v2 \u003cRow\u003e (scan_method: Row)",
+      "displayName": "Scan",
+      "predicates": [],
+      "scalarChildLinks": [
+        {
+          "type": "",
+          "variable": "batched_AlbumId",
+          "description": "AlbumId",
+          "displayName": "Reference",
+          "childIndex": 26,
+          "isPredicate": false
+        },
+        {
+          "type": "",
+          "variable": "batched_AlbumTitle",
+          "description": "AlbumTitle",
+          "displayName": "Reference",
+          "childIndex": 27,
+          "isPredicate": false
+        },
+        {
+          "type": "",
+          "variable": "batched_SingerId",
+          "description": "SingerId",
+          "displayName": "Reference",
+          "childIndex": 28,
+          "isPredicate": false
+        }
+      ]
+    },
+    {
+      "nodeId": 29,
+      "treePart": "         +- ",
+      "nodeText": "[Map] Local Distributed Union \u003cRow\u003e",
+      "displayName": "Distributed Union",
+      "predicates": [],
+      "scalarChildLinks": []
+    },
+    {
+      "nodeId": 30,
+      "treePart": "            +- ",
+      "nodeText": "Filter Scan \u003cRow\u003e (seekable_key_size: 0)",
+      "displayName": "Filter Scan",
+      "predicates": [],
+      "scalarChildLinks": []
+    },
+    {
+      "nodeId": 31,
+      "treePart": "               +- ",
+      "nodeText": "Table Scan on Albums \u003cRow\u003e (scan_method: Row)",
+      "displayName": "Scan",
+      "predicates": [
+        "Seek Condition: (($SingerId' = $batched_SingerId) AND ($AlbumId' = $batched_AlbumId))"
+      ],
+      "scalarChildLinks": [
+        {
+          "type": "",
+          "variable": "MarketingBudget",
+          "description": "MarketingBudget",
+          "displayName": "Reference",
+          "childIndex": 32,
+          "isPredicate": false
+        },
+        {
+          "type": "",
+          "variable": "SingerId'",
+          "description": "SingerId",
+          "displayName": "Reference",
+          "childIndex": 33,
+          "isPredicate": false
+        },
+        {
+          "type": "",
+          "variable": "AlbumId'",
+          "description": "AlbumId",
+          "displayName": "Reference",
+          "childIndex": 34,
+          "isPredicate": false
+        },
+        {
+          "type": "Seek Condition",
+          "variable": "",
+          "description": "(($SingerId' = $batched_SingerId) AND ($AlbumId' = $batched_AlbumId))",
+          "displayName": "Function",
+          "childIndex": 42,
+          "isPredicate": true
+        }
+      ]
+    }
+  ]
+}

@@ -728,6 +728,19 @@ Port `plantree/reference/reference.go`.
 Print presets/sections wrappers mirror `plantree/reference/appendix.go`
 (`PrintSection`, `PrintPreset`, `NewPrintSections`, `ParsePrint*`).
 
+### 6.10 Structured Plantree rows
+
+`plantree_rows(plan_nodes, format, PlantreeConfig)` returns the `ProcessPlan`
+pre-order rows without rendering a table or scalar appendix. Its narrow config
+contains only `wrap_width`, `hanging_indent`, and `disallow_unknown_stats`.
+WASM projects the core rows to the versioned v1 envelope described by
+[`schema/plantree-rows-v1.schema.json`](schema/plantree-rows-v1.schema.json):
+`{contractVersion: 1, rows}` or `{error}`. Each scalar child link carries raw
+link fields plus an `isPredicate` classification from `QueryPlan::is_predicate`;
+never infer that flag from `node_text` or formatted table output. Execution
+statistics, render mode, occurrence IDs, and formatted `operator` text are
+outside this contract.
+
 ---
 
 ## 7. Cross-cutting details & gotchas

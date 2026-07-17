@@ -3,7 +3,7 @@
   "description": "Render Cloud Spanner query plans as ASCII tables (FFI-backed)",
   "type": "library",
   "license": "Apache-2.0",
-  "version": "0.1.0-alpha.1",
+  "version": "0.1.0-alpha.2",
   "require": {
     "php": ">=8.0",
     "ext-ffi": "*"

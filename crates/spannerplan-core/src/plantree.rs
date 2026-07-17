@@ -84,6 +84,9 @@ pub struct ScalarChildLink {
     pub display_name: String,
     /// The scalar child node's PlanNode index.
     pub child_index: i32,
+    /// Whether this child link is a filter predicate according to
+    /// [`QueryPlan::is_predicate`].
+    pub is_predicate: bool,
 }
 
 /// Options for [`process_plan`]. A plain struct with builder methods rather
@@ -298,6 +301,7 @@ fn build_rendered_tree(
             description: child.get_short_representation_description().to_string(),
             display_name: child.get_display_name().to_string(),
             child_index: child.get_index(),
+            is_predicate: qp.is_predicate(Some(cl)),
         });
     }
 
@@ -488,6 +492,7 @@ mod tests {
                     description: "$SongGenre".to_string(),
                     display_name: "Reference".to_string(),
                     child_index: 1,
+                    is_predicate: false,
                 },
                 ScalarChildLink {
                     r#type: "Value".to_string(),
@@ -495,6 +500,7 @@ mod tests {
                     description: "$SongName".to_string(),
                     display_name: "Reference".to_string(),
                     child_index: 2,
+                    is_predicate: false,
                 },
             ]
         );
@@ -509,6 +515,7 @@ mod tests {
                     description: "$SingerId".to_string(),
                     display_name: "Reference".to_string(),
                     child_index: 4,
+                    is_predicate: false,
                 },
                 ScalarChildLink {
                     r#type: "Agg".to_string(),
@@ -516,8 +523,55 @@ mod tests {
                     description: "COUNT(*)".to_string(),
                     display_name: "Function".to_string(),
                     child_index: 5,
+                    is_predicate: false,
                 },
             ]
+        );
+    }
+
+    #[test]
+    fn scalar_child_links_classify_predicates_without_changing_order() {
+        let qp = QueryPlan::new(vec![
+            relational(
+                0,
+                "Filter Scan",
+                vec![
+                    var_link(1, "Key", "key"),
+                    link(2, "Condition"),
+                    var_link(3, "Value", "value"),
+                    link(4, "Search Predicate"),
+                ],
+            ),
+            scalar(1, "Reference", "$SingerId"),
+            scalar(2, "Function", "SingerId = 1"),
+            scalar(3, "Reference", "$SongName"),
+            scalar(4, "Search Predicate", "SEARCH(Tokens, 'blue')"),
+        ])
+        .unwrap();
+
+        let rows = process_plan(&qp, &ProcessPlanOptions::default()).unwrap();
+        let row = row_by_id(&rows, 0);
+        assert_eq!(
+            row.scalar_child_links
+                .iter()
+                .map(|link| (link.child_index, link.is_predicate))
+                .collect::<Vec<_>>(),
+            vec![(1, false), (2, true), (3, false), (4, true)]
+        );
+        assert_eq!(
+            row.predicates,
+            vec![
+                "Condition: SingerId = 1".to_string(),
+                "Search Predicate: SEARCH(Tokens, 'blue')".to_string(),
+            ]
+        );
+        assert_eq!(
+            row.scalar_child_links
+                .iter()
+                .filter(|link| link.is_predicate)
+                .map(|link| format!("{}: {}", link.r#type, link.description))
+                .collect::<Vec<_>>(),
+            row.predicates
         );
     }
 

@@ -14,6 +14,11 @@ Fiddle wrapper around `libspannerplan_ffi` from `crates/spannerplan-ffi`.
 - **Wire render** — `Spannerplan.render_tree_table_wire(plan_wire, mode:, format:)` accepts
   protobuf wire-encoded `QueryPlan` bytes (see `examples/spanner-client/ruby`).
 
+Release FFI assets are versioned target-triple archives rather than loose
+libraries. Extract the matching archive before setting `SPANNERPLAN_FFI_LIB`
+or `SPANNERPLAN_FFI_DIR`; archives include the natural library filename,
+`spannerplan.h`, and `LICENSE`.
+
 See also: [bindings overview](../README.md#ffi-bindings-vs-native-implementations).
 
 ## Local development

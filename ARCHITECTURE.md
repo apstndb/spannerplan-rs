@@ -69,11 +69,13 @@ Two WASM/FFI entry styles exist on purpose:
 | Entry | Rust / WASM symbol | Use when |
 |-------|-------------------|----------|
 | **Reference API** | `render_tree_table_with_config` / `spannerplanRenderTreeTable` | Library callers: plan bytes + mode/format + [`RenderConfig`](schema/render-config.schema.json). Matches Go `RenderTreeTableWithConfig`. |
+| **Structured Plantree** | `plantree_rows` / `spannerplanPlantreeRows` | Library callers that need typed pre-order Plantree rows rather than formatted table text. Versioned by [`plantree-rows-v1.schema.json`](schema/plantree-rows-v1.schema.json). |
 | **CLI runner** | `spannerplan_cli::run_collecting` / `spannerplanRenderRendertree` | Reproduce `rendertree` flag semantics exactly (help text, usage errors, profile column behavior). Node-only in JS (`renderRendertree`). |
 
-Both funnel into the same core renderer; the CLI path adds flag parsing and
-process-style I/O. Prefer the **reference API** for embeddable libraries; use
-the **CLI path** only when matching shell tool behavior.
+All three funnel into the same Plantree processing core; the CLI path adds flag
+parsing and process-style I/O. Prefer the **structured Plantree API** when a
+consumer needs rows, the **reference API** when it needs the formatted table,
+and the **CLI path** only when matching shell tool behavior.
 
 Shared config shape: [`schema/render-config.schema.json`](schema/render-config.schema.json)
 (camelCase JSON, decoded by Rust `RenderConfig`, FFI `config_json`, WASM
@@ -87,7 +89,7 @@ WASM is built from `crates/spannerplan-wasm` via
 
 | Artifact | Features | Used by |
 |----------|----------|---------|
-| `wasm/` (browser slim) | `wire` only | Bundlers / `@spannerplan/core/browser` |
+| `wasm/` (browser slim) | `wire` only | `wasm-pack --target web`; async `@spannerplan/core/browser` initialization through a package-relative asset URL |
 | `wasm-node/` (node full) | `yaml`, `wire`, `cli` | Node.js / `renderRendertree` |
 
 Browser builds omit `serde_yaml_ng` and the CLI; YAML text is parsed in
@@ -99,7 +101,7 @@ Both accept JSON objects and protobuf wire bytes (`Uint8Array`). Size matrix:
 
 | Package | Role |
 |---------|------|
-| `@spannerplan/core` | `renderTreeTable`, `renderTreeTableWire`, types |
+| `@spannerplan/core` | `renderTreeTable`, `renderTreeTableWire`, `plantreeRows`, `plantreeRowsWire`, types |
 | `@spannerplan/cli` | `rendertree` npm binary (stdin + flags → WASM CLI path) |
 
 Details (build prerequisites, input shapes, browser bundler, API examples):

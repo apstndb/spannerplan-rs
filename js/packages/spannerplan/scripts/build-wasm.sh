@@ -48,8 +48,11 @@ if [[ ! -e LICENSE && -f "$ROOT/LICENSE" ]]; then
   ln -sf "$ROOT/LICENSE" LICENSE
 fi
 
-# Browser / bundler: no serde_yaml_ng or CLI — host parses YAML before calling WASM.
-build_wasm bundler "$OUT/wasm" wire
+# Browser: the web target uses a package-relative `new URL(..., import.meta.url)`
+# initializer. Vite and other modern bundlers turn that URL into a deployed
+# asset; wasm-pack's bundler target instead relies on the still-unsupported
+# WebAssembly ESM integration proposal.
+build_wasm web "$OUT/wasm" wire
 
 # Node: full feature set for YAML stdin, wire bytes, and rendertree CLI parity.
 build_wasm nodejs "$OUT/wasm-node" yaml,wire,cli
