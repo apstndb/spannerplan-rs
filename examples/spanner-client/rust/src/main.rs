@@ -4,12 +4,11 @@ use std::env;
 use std::fs;
 use std::path::PathBuf;
 
-use google_cloud_gax::conn::ConnectionOptions;
-use google_cloud_googleapis::spanner::v1::execute_sql_request::QueryMode;
-use google_cloud_googleapis::spanner::v1::{CreateSessionRequest, ExecuteSqlRequest};
-use google_cloud_spanner::apiv1::conn_pool::ConnectionManager;
-use google_cloud_spanner::apiv1::spanner_client::Client as SpannerGrpcClient;
-use google_cloud_spanner::client::ClientConfig;
+use google_cloud_googleapis::spanner::v1;
+use google_cloud_spanner::client::Spanner;
+use google_cloud_spanner::model::execute_sql_request::QueryMode;
+use google_cloud_spanner::model::{PlanNode, QueryPlan};
+use google_cloud_spanner::statement::Statement;
 use prost::Message;
 use spannerplan::core::reference::{
     parse_format, parse_render_mode, render_tree_table_with_config, RenderConfig,
@@ -37,7 +36,10 @@ fn default_query_file() -> PathBuf {
         .join("query.sql")
 }
 
-fn load_sql(query: Option<&str>, query_file: Option<&str>) -> Result<String, Box<dyn std::error::Error>> {
+fn load_sql(
+    query: Option<&str>,
+    query_file: Option<&str>,
+) -> Result<String, Box<dyn std::error::Error>> {
     if let Some(sql) = query {
         return Ok(sql.trim().to_string());
     }
@@ -111,8 +113,10 @@ fn parse_cli_options() -> Result<CliOptions, Box<dyn std::error::Error>> {
         return Err(format!("query mode must be PLAN or PROFILE, got: {query_mode}").into());
     }
     let project = project.ok_or("missing required value: set --project or SPANNER_PROJECT_ID")?;
-    let instance = instance.ok_or("missing required value: set --instance or SPANNER_INSTANCE_ID")?;
-    let database = database.ok_or("missing required value: set --database or SPANNER_DATABASE_ID")?;
+    let instance =
+        instance.ok_or("missing required value: set --instance or SPANNER_INSTANCE_ID")?;
+    let database =
+        database.ok_or("missing required value: set --database or SPANNER_DATABASE_ID")?;
     let sql = load_sql(query.as_deref(), query_file.as_deref())?;
 
     Ok(CliOptions {
@@ -140,63 +144,87 @@ fn render_mode_for(mode: &str) -> &'static str {
     }
 }
 
+fn encode_query_plan(plan: QueryPlan) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    let plan_nodes = plan
+        .plan_nodes
+        .into_iter()
+        .map(encode_plan_node)
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(v1::QueryPlan { plan_nodes }.encode_to_vec())
+}
+
+fn encode_plan_node(node: PlanNode) -> Result<v1::PlanNode, Box<dyn std::error::Error>> {
+    let child_links = node
+        .child_links
+        .into_iter()
+        .map(|link| v1::plan_node::ChildLink {
+            child_index: link.child_index,
+            r#type: link.r#type,
+            variable: link.variable,
+        })
+        .collect();
+    let short_representation =
+        node.short_representation
+            .map(|short| v1::plan_node::ShortRepresentation {
+                description: short.description,
+                subqueries: short.subqueries,
+            });
+    Ok(v1::PlanNode {
+        index: node.index,
+        kind: node.kind.value().unwrap_or_default(),
+        display_name: node.display_name,
+        child_links,
+        short_representation,
+        metadata: node.metadata.map(encode_struct),
+        execution_stats: node.execution_stats.map(encode_struct),
+    })
+}
+
+fn encode_struct(value: serde_json::Map<String, serde_json::Value>) -> prost_types::Struct {
+    prost_types::Struct {
+        fields: value
+            .into_iter()
+            .map(|(key, value)| (key, encode_value(value)))
+            .collect(),
+    }
+}
+
+fn encode_value(value: serde_json::Value) -> prost_types::Value {
+    use prost_types::value::Kind;
+
+    let kind = match value {
+        serde_json::Value::Null => Kind::NullValue(0),
+        serde_json::Value::Bool(value) => Kind::BoolValue(value),
+        serde_json::Value::Number(value) => Kind::NumberValue(value.as_f64().unwrap_or_default()),
+        serde_json::Value::String(value) => Kind::StringValue(value),
+        serde_json::Value::Array(values) => Kind::ListValue(prost_types::ListValue {
+            values: values.into_iter().map(encode_value).collect(),
+        }),
+        serde_json::Value::Object(value) => Kind::StructValue(encode_struct(value)),
+    };
+    prost_types::Value { kind: Some(kind) }
+}
+
 async fn fetch_query_plan_wire(
     database: &str,
     sql: &str,
     query_mode: &str,
 ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    let config = ClientConfig::default().with_auth().await?;
-    let conn_options = ConnectionOptions {
-        timeout: Some(config.channel_config.timeout),
-        connect_timeout: Some(config.channel_config.connect_timeout),
-    };
-    let cm = ConnectionManager::new(
-        config.channel_config.num_channels,
-        &config.environment,
-        &config.endpoint,
-        &conn_options,
-    )
-    .await?;
-    let mut client: SpannerGrpcClient = cm.conn();
-
-    let session = client
-        .create_session(
-            CreateSessionRequest {
-                database: database.to_string(),
-                session: None,
-            },
-            None,
-        )
-        .await?
-        .into_inner();
-
-    let result = client
-        .execute_sql(
-            ExecuteSqlRequest {
-                session: session.name,
-                transaction: None,
-                sql: sql.to_string(),
-                params: None,
-                param_types: Default::default(),
-                resume_token: vec![],
-                query_mode: spanner_query_mode(query_mode).into(),
-                partition_token: vec![],
-                seqno: 0,
-                query_options: None,
-                request_options: None,
-                data_boost_enabled: false,
-                directed_read_options: None,
-            },
-            None,
-        )
-        .await?
-        .into_inner();
-
+    let client = Spanner::builder().build().await?;
+    let database_client = client.database_client(database).build().await?;
+    let transaction = database_client.single_use().build();
+    let statement = Statement::builder(sql)
+        .set_query_mode(spanner_query_mode(query_mode))
+        .build();
+    let mut result = transaction.execute_query(statement).await?;
+    while let Some(row) = result.next().await {
+        row?;
+    }
     let plan = result
-        .stats
-        .and_then(|stats| stats.query_plan)
+        .stats()
+        .and_then(|stats| stats.query_plan.clone())
         .ok_or_else(|| format!("QueryPlan missing from {query_mode}-mode execute_sql response"))?;
-    Ok(plan.encode_to_vec())
+    encode_query_plan(plan)
 }
 
 #[tokio::main]

@@ -11,6 +11,10 @@ updates:
       cargo:
         patterns:
           - "*"
+      cargo-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
   - package-ecosystem: "npm"
     directory: "/js"
     schedule:
@@ -19,6 +23,66 @@ updates:
       default-days: 3
     groups:
       npm:
+        patterns:
+          - "*"
+      npm-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+  - package-ecosystem: "gomod"
+    directory: "/examples/spanner-client/go"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 3
+    groups:
+      spanner-client-go:
+        patterns:
+          - "*"
+      spanner-client-go-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+  - package-ecosystem: "cargo"
+    directory: "/examples/spanner-client/rust"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 3
+    groups:
+      spanner-client-rust:
+        patterns:
+          - "*"
+      spanner-client-rust-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+  - package-ecosystem: "npm"
+    directory: "/examples/spanner-client/node"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 3
+    groups:
+      spanner-client-node:
+        patterns:
+          - "*"
+      spanner-client-node-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+  - package-ecosystem: "gomod"
+    directory: "/lab/genstructuredgolden"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 3
+    groups:
+      structured-golden-generator:
+        patterns:
+          - "*"
+      structured-golden-generator-security:
+        applies-to: security-updates
         patterns:
           - "*"
   - package-ecosystem: "github-actions"
