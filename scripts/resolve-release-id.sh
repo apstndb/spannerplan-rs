@@ -3,8 +3,10 @@
 #
 # GitHub's paginated releases list can briefly omit a newly created draft. The
 # get-by-tag endpoint exposes only published releases, so it cannot resolve the
-# draft created by this workflow. Retry only an empty exact-tag draft match;
-# never create, delete, edit, publish, or retag a release here.
+# draft created by this workflow. Retry only when no exact-tag release is
+# visible. Once any exact-tag record is visible, require it to be the sole
+# record and the draft created by this workflow; never create, delete, edit,
+# publish, or retag a release here.
 set -euo pipefail
 
 usage() {
@@ -62,28 +64,42 @@ for ((attempt = 1; attempt <= MAX_ATTEMPTS; attempt++)); do
   RESPONSE=""
   : >"$ERROR_FILE"
   if RESPONSE="$(gh api --paginate "$ENDPOINT" 2>"$ERROR_FILE")"; then
-    if ! RELEASE_IDS="$(printf '%s\n' "$RESPONSE" | jq -rs --arg tag "$TAG" \
-      '.[][] | select(.tag_name == $tag and .draft == true) | .id')"; then
+    if ! EXACT_TAG_RELEASES="$(printf '%s' "$RESPONSE" | jq -cs --arg tag "$TAG" '
+      if length == 0 or any(.[]; type != "array") then
+        error("expected one or more release-list arrays")
+      elif any(.[][]; type != "object" or (.tag_name | type) != "string") then
+        error("expected release objects with string tag_name fields")
+      else
+        [.[][] | select(.tag_name == $tag) | {id, draft}]
+      end')"; then
       echo "error: release list for tag '$TAG' was not valid GitHub API JSON" >&2
       exit 1
     fi
-    RELEASE_IDS="$(printf '%s\n' "$RELEASE_IDS" | sed '/^$/d')"
-    RELEASE_ID_COUNT="$(printf '%s\n' "$RELEASE_IDS" | awk 'NF { count++ } END { print count + 0 }')"
-    case "$RELEASE_ID_COUNT" in
+    EXACT_TAG_COUNT="$(jq -r 'length' <<<"$EXACT_TAG_RELEASES")"
+    case "$EXACT_TAG_COUNT" in
       1)
-        if [[ "$RELEASE_IDS" =~ ^[0-9]+$ ]]; then
-          printf '%s\n' "$RELEASE_IDS"
+        if ! jq -e '.[0].draft == true' >/dev/null <<<"$EXACT_TAG_RELEASES"; then
+          echo "error: the sole release for tag '$TAG' is not a draft; refusing to use it as the newly created draft" >&2
+          exit 1
+        fi
+        if ! jq -e '.[0].id | type == "number" and . > 0 and . == floor' >/dev/null <<<"$EXACT_TAG_RELEASES"; then
+          echo "error: release lookup for tag '$TAG' returned a non-numeric release ID" >&2
+          exit 1
+        fi
+        RELEASE_ID="$(jq -r '.[0].id' <<<"$EXACT_TAG_RELEASES")"
+        if [[ "$RELEASE_ID" =~ ^[0-9]+$ ]]; then
+          printf '%s\n' "$RELEASE_ID"
           exit 0
         fi
         echo "error: release lookup for tag '$TAG' returned a non-numeric release ID" >&2
         exit 1
         ;;
       0)
-        # A successful list response without the exact-tag draft is the
+        # A successful list response without any exact-tag release is the
         # observed eventual-consistency failure mode.
         ;;
       *)
-        echo "error: release lookup for tag '$TAG' returned multiple release IDs" >&2
+        echo "error: release lookup for tag '$TAG' returned multiple release records" >&2
         exit 1
         ;;
     esac
