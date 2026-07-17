@@ -3,11 +3,7 @@ import { plantreeRows } from "@spannerplan/core/browser";
 
 const output = document.querySelector("#release-smoke-result");
 
-function report(value, status) {
-  output.dataset.status = status;
-  output.textContent = JSON.stringify(value);
-}
-
+let result;
 try {
   const source = await fetch("/dca.yaml").then((response) => {
     if (!response.ok) throw new Error(`fixture request failed: ${response.status}`);
@@ -29,13 +25,28 @@ try {
   if (!predicateLinks.some((link) => link.displayName === "Function")) {
     throw new Error("predicate scalar-link evidence is absent");
   }
-  report({
+  result = {
+    status: "ok",
     contractVersion: response.contractVersion,
     rowCount: response.rows.length,
     rootNodeId: response.rows[0].nodeId,
     rootNodeText: response.rows[0].nodeText,
     predicateLinks: predicateLinks.length,
-  }, "ok");
+  };
 } catch (error) {
-  report({ error: error instanceof Error ? error.message : String(error) }, "error");
+  result = {
+    status: "error",
+    error: error instanceof Error ? error.message : String(error),
+  };
+}
+
+output.dataset.status = result.status;
+output.textContent = JSON.stringify(result);
+const reportResponse = await fetch("/__release-smoke-result", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(result),
+});
+if (!reportResponse.ok) {
+  throw new Error(`result report failed: ${reportResponse.status}`);
 }

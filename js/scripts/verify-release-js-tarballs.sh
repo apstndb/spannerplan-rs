@@ -9,11 +9,58 @@ JS_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 REPO_ROOT="$(cd "$JS_ROOT/.." && pwd)"
 WORK="$(mktemp -d)"
 server_pid=""
-cleanup() {
-  if [[ -n "$server_pid" ]]; then
-    kill "$server_pid" 2>/dev/null || true
-    wait "$server_pid" 2>/dev/null || true
+browser_pid=""
+stop_server() {
+  local pid="$server_pid"
+  server_pid=""
+  if [[ -n "$pid" ]]; then
+    kill "$pid" 2>/dev/null || true
+    wait "$pid" 2>/dev/null || true
   fi
+}
+
+stop_browser() {
+  local pid="$browser_pid"
+  browser_pid=""
+  if [[ -n "$pid" ]]; then
+    kill "$pid" 2>/dev/null || true
+    wait "$pid" 2>/dev/null || true
+  fi
+}
+
+print_browser_smoke_failure() {
+  local label="$1"
+  local reason="$2"
+  local chrome_log="$3"
+  local server_log="$4"
+  local result_file="$5"
+
+  {
+    echo "browser smoke failed (${label}): ${reason}"
+    echo "--- Chrome stderr (${label}) ---"
+    if [[ -s "$chrome_log" ]]; then
+      cat "$chrome_log"
+    else
+      echo "(empty)"
+    fi
+    echo "--- smoke server log (${label}) ---"
+    if [[ -s "$server_log" ]]; then
+      cat "$server_log"
+    else
+      echo "(empty)"
+    fi
+    echo "--- page result JSON (${label}) ---"
+    if [[ -f "$result_file" ]]; then
+      cat "$result_file"
+    else
+      echo "(not written)"
+    fi
+  } >&2
+}
+
+cleanup() {
+  stop_browser
+  stop_server
   rm -rf "$WORK"
 }
 trap cleanup EXIT
@@ -84,12 +131,18 @@ run_browser_smoke() {
   local mime="$1"
   local label="$2"
   local server_log="$WORK/server-${label}.log"
-  local dom="$WORK/dom-${label}.html"
-  server_pid=""
-  RELEASE_SMOKE_WASM_MIME="$mime" node "$JS_ROOT/examples/release-browser-smoke/server.mjs" \
-    "$browser_consumer/dist" >"$server_log" 2>&1 &
-  server_pid=$!
+  local chrome_log="$WORK/chrome-${label}.log"
+  local result_file="$WORK/result-${label}.json"
+  local profile_dir="$WORK/chrome-profile-${label}"
   local port=""
+
+  stop_browser
+  stop_server
+  mkdir "$profile_dir"
+  : >"$chrome_log"
+  RELEASE_SMOKE_WASM_MIME="$mime" node "$JS_ROOT/examples/release-browser-smoke/server.mjs" \
+    "$browser_consumer/dist" "$result_file" >"$server_log" 2>&1 &
+  server_pid=$!
   for _ in {1..50}; do
     if [[ -s "$server_log" ]]; then
       port="$(sed -n '1p' "$server_log")"
@@ -98,20 +151,50 @@ run_browser_smoke() {
     sleep 0.1
   done
   if [[ ! "$port" =~ ^[0-9]+$ ]]; then
-    cat "$server_log" >&2
+    stop_server
+    print_browser_smoke_failure "$label" "server did not report a listening port" \
+      "$chrome_log" "$server_log" "$result_file"
     return 1
   fi
-  "$chrome_bin" --headless=new --no-sandbox --disable-gpu --dump-dom \
-    --virtual-time-budget=10000 "http://127.0.0.1:${port}/" >"$dom" 2>"$WORK/chrome-${label}.log"
-  kill "$server_pid" 2>/dev/null || true
-  wait "$server_pid" 2>/dev/null || true
-  server_pid=""
-  grep -Eq 'data-status="ok"' "$dom"
-  grep -Eq '"contractVersion":1' "$dom"
-  grep -Eq '"rowCount":[1-9][0-9]*' "$dom"
-  grep -Eq '"rootNodeId":0' "$dom"
-  grep -Fq '"rootNodeText":"Distributed Union on AlbumsByAlbumTitle &lt;Row&gt;"' "$dom"
-  grep -Eq '"predicateLinks":[1-9][0-9]*' "$dom"
+  "$chrome_bin" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage \
+    "--user-data-dir=${profile_dir}" --remote-debugging-port=0 \
+    "http://127.0.0.1:${port}/" >/dev/null 2>"$chrome_log" &
+  browser_pid=$!
+  for _ in {1..300}; do
+    if [[ -s "$result_file" ]]; then
+      break
+    fi
+    if ! kill -0 "$browser_pid" 2>/dev/null; then
+      wait "$browser_pid" 2>/dev/null || true
+      browser_pid=""
+      stop_server
+      print_browser_smoke_failure "$label" "Chrome exited before writing a page result" \
+        "$chrome_log" "$server_log" "$result_file"
+      return 1
+    fi
+    sleep 0.1
+  done
+  if [[ ! -s "$result_file" ]]; then
+    stop_browser
+    stop_server
+    print_browser_smoke_failure "$label" "timed out after 30 seconds waiting for a page result" \
+      "$chrome_log" "$server_log" "$result_file"
+    return 1
+  fi
+  stop_browser
+  stop_server
+  if ! jq -e '
+    .status == "ok"
+    and .contractVersion == 1
+    and (.rowCount | type == "number" and . > 0)
+    and .rootNodeId == 0
+    and .rootNodeText == "Distributed Union on AlbumsByAlbumTitle <Row>"
+    and (.predicateLinks | type == "number" and . > 0)
+  ' "$result_file" >/dev/null; then
+    print_browser_smoke_failure "$label" "page result did not satisfy the release contract" \
+      "$chrome_log" "$server_log" "$result_file"
+    return 1
+  fi
   echo "browser smoke passed (${label}, WASM MIME ${mime})"
 }
 

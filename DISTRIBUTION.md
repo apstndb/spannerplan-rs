@@ -1,9 +1,10 @@
 # Distribution
 
-This project is distributed through **GitHub Releases** and **git dependencies**.
-We do not publish to crates.io, npmjs.org, PyPI, Maven Central, NuGet, or
-GitHub Packages. Official registries may be added later if discoverability
-demands it.
+Alpha releases are distributed through **GitHub Releases** and **git
+dependencies**. The beta milestone will add crates.io and npmjs.org publication
+for the supported public Rust and JavaScript packages after their APIs are
+stabilized. PyPI, Maven Central, NuGet, and GitHub Packages are not currently
+part of that milestone.
 
 Latest release: https://github.com/apstndb/spannerplan-rs/releases
 
@@ -62,7 +63,8 @@ cargo install --git https://github.com/apstndb/spannerplan-rs --tag v0.1.0-alpha
 rendertree -mode plan < plan.yaml
 ```
 
-Crates are marked `publish = false`; releases do not publish to crates.io.
+During alpha, crates remain marked `publish = false` and releases do not publish
+to crates.io.
 
 ## JavaScript / TypeScript
 
