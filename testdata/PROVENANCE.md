@@ -14,6 +14,7 @@ Upstream reference implementation:
 | `reference/` | Copied verbatim from Go repo | `plantree/reference/testdata/` | `v0.2.1` | 2026-07-08 |
 | `rendertree/` | Copied verbatim from Go repo | `cmd/rendertree/impl/testdata/` | `v0.2.1` | 2026-07-08 |
 | `golden/` | Machine-generated from Go repo | rendered via `lab/genrsgolden` | `v0.2.1` | 2026-07-08 |
+| `golden/*_plantree_rows_current.json` | Machine-generated from Go repo | projected via `lab/genstructuredgolden` | `v0.2.1` | 2026-07-17 |
 | `wire/` | Generated in this repo (Rust) | derived from `reference/*.yaml` | this repo | 2026-07-08 |
 
 The `v0.2.1` fixture copies under `reference/` and `rendertree/` were verified
@@ -35,6 +36,22 @@ rm -rf spannerplan
 Regenerate from a Go checkout at the same tag using the `lab/genrsgolden`
 harness. Never edit the `.txt` files by hand. Full steps and the filename
 matrix: [`lab/genrsgolden/README.md`](../lab/genrsgolden/README.md).
+
+### Structured Plantree v1 JSON goldens
+
+The structured JSON is generated locally from the pinned Go v0.2.1 module,
+not hand-authored and not derived by parsing ASCII tables:
+
+```bash
+cd lab/genstructuredgolden
+go run . -repo-root ../..
+go run . -repo-root ../.. -check
+```
+
+The generator uses Go `plantree.ProcessPlan` with the reference `CURRENT`
+options and `QueryPlan.IsPredicate` for scalar-link classification. It writes
+the two `*_plantree_rows_current.json` files with deterministic indentation,
+a trailing newline, and `[]` for empty slices.
 
 ### `wire/` (protobuf `QueryPlan` bytes)
 

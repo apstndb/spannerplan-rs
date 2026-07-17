@@ -1,0 +1,210 @@
+{
+  "contractVersion": 1,
+  "rows": [
+    {
+      "nodeId": 0,
+      "treePart": "",
+      "nodeText": "Distributed Union on AlbumsByAlbumTitle \u003cRow\u003e",
+      "displayName": "Distributed Union",
+      "predicates": [],
+      "scalarChildLinks": [
+        {
+          "type": "Split Range",
+          "variable": "",
+          "description": "true",
+          "displayName": "Constant",
+          "childIndex": 28,
+          "isPredicate": false
+        }
+      ]
+    },
+    {
+      "nodeId": 1,
+      "treePart": "+- ",
+      "nodeText": "Distributed Cross Apply \u003cRow\u003e",
+      "displayName": "Distributed Cross Apply",
+      "predicates": [
+        "Split Range: ($AlbumId = $AlbumId_1)"
+      ],
+      "scalarChildLinks": [
+        {
+          "type": "Split Range",
+          "variable": "",
+          "description": "($AlbumId = $AlbumId_1)",
+          "displayName": "Function",
+          "childIndex": 25,
+          "isPredicate": true
+        }
+      ]
+    },
+    {
+      "nodeId": 2,
+      "treePart": "   +- ",
+      "nodeText": "[Input] Create Batch \u003cRow\u003e",
+      "displayName": "Create Batch",
+      "predicates": [],
+      "scalarChildLinks": [
+        {
+          "type": "",
+          "variable": "v2.Batch",
+          "description": "$v1",
+          "displayName": "Reference",
+          "childIndex": 10,
+          "isPredicate": false
+        }
+      ]
+    },
+    {
+      "nodeId": 3,
+      "treePart": "   |  +- ",
+      "nodeText": "Local Distributed Union \u003cRow\u003e",
+      "displayName": "Distributed Union",
+      "predicates": [],
+      "scalarChildLinks": []
+    },
+    {
+      "nodeId": 4,
+      "treePart": "   |     +- ",
+      "nodeText": "Compute Struct \u003cRow\u003e",
+      "displayName": "Compute Struct",
+      "predicates": [],
+      "scalarChildLinks": [
+        {
+          "type": "",
+          "variable": "v1.AlbumId_1",
+          "description": "$AlbumId_1",
+          "displayName": "Reference",
+          "childIndex": 8,
+          "isPredicate": false
+        },
+        {
+          "type": "",
+          "variable": "v1.AlbumTitle",
+          "description": "$AlbumTitle",
+          "displayName": "Reference",
+          "childIndex": 9,
+          "isPredicate": false
+        }
+      ]
+    },
+    {
+      "nodeId": 5,
+      "treePart": "   |        +- ",
+      "nodeText": "Index Scan on AlbumsByAlbumTitle \u003cRow\u003e (Full scan, scan_method: Automatic)",
+      "displayName": "Scan",
+      "predicates": [],
+      "scalarChildLinks": [
+        {
+          "type": "",
+          "variable": "AlbumId_1",
+          "description": "AlbumId",
+          "displayName": "Reference",
+          "childIndex": 6,
+          "isPredicate": false
+        },
+        {
+          "type": "",
+          "variable": "AlbumTitle",
+          "description": "AlbumTitle",
+          "displayName": "Reference",
+          "childIndex": 7,
+          "isPredicate": false
+        }
+      ]
+    },
+    {
+      "nodeId": 11,
+      "treePart": "   +- ",
+      "nodeText": "[Map] Serialize Result \u003cRow\u003e",
+      "displayName": "Serialize Result",
+      "predicates": [],
+      "scalarChildLinks": [
+        {
+          "type": "",
+          "variable": "",
+          "description": "$batched_AlbumTitle",
+          "displayName": "Reference",
+          "childIndex": 24,
+          "isPredicate": false
+        }
+      ]
+    },
+    {
+      "nodeId": 12,
+      "treePart": "      +- ",
+      "nodeText": "Cross Apply \u003cRow\u003e",
+      "displayName": "Cross Apply",
+      "predicates": [],
+      "scalarChildLinks": []
+    },
+    {
+      "nodeId": 13,
+      "treePart": "         +- ",
+      "nodeText": "[Input] Batch Scan on $v2 \u003cRow\u003e (scan_method: Row)",
+      "displayName": "Scan",
+      "predicates": [],
+      "scalarChildLinks": [
+        {
+          "type": "",
+          "variable": "batched_AlbumId_1",
+          "description": "AlbumId_1",
+          "displayName": "Reference",
+          "childIndex": 14,
+          "isPredicate": false
+        },
+        {
+          "type": "",
+          "variable": "batched_AlbumTitle",
+          "description": "AlbumTitle",
+          "displayName": "Reference",
+          "childIndex": 15,
+          "isPredicate": false
+        }
+      ]
+    },
+    {
+      "nodeId": 16,
+      "treePart": "         +- ",
+      "nodeText": "[Map] Local Distributed Union \u003cRow\u003e",
+      "displayName": "Distributed Union",
+      "predicates": [],
+      "scalarChildLinks": []
+    },
+    {
+      "nodeId": 17,
+      "treePart": "            +- ",
+      "nodeText": "Filter Scan \u003cRow\u003e (seekable_key_size: 0)",
+      "displayName": "Filter Scan",
+      "predicates": [
+        "Residual Condition: ($AlbumId = $batched_AlbumId_1)"
+      ],
+      "scalarChildLinks": [
+        {
+          "type": "Residual Condition",
+          "variable": "",
+          "description": "($AlbumId = $batched_AlbumId_1)",
+          "displayName": "Function",
+          "childIndex": 23,
+          "isPredicate": true
+        }
+      ]
+    },
+    {
+      "nodeId": 18,
+      "treePart": "               +- ",
+      "nodeText": "Index Scan on SongsBySongGenre \u003cRow\u003e (Full scan, scan_method: Row)",
+      "displayName": "Scan",
+      "predicates": [],
+      "scalarChildLinks": [
+        {
+          "type": "",
+          "variable": "AlbumId",
+          "description": "AlbumId",
+          "displayName": "Reference",
+          "childIndex": 19,
+          "isPredicate": false
+        }
+      ]
+    }
+  ]
+}

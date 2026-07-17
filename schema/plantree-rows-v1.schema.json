@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/apstndb/spannerplan-rs/schema/plantree-rows-v1.schema.json",
+  "title": "Plantree rows v1 response",
+  "description": "Versioned structured Plantree response returned by the WASM API. Success contains contractVersion 1 and pre-order rows; failures contain only an error string.",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "rows"],
+      "properties": {
+        "contractVersion": {
+          "const": 1
+        },
+        "rows": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/row" }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["error"],
+      "properties": {
+        "error": {
+          "type": "string"
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "nodeId",
+        "treePart",
+        "nodeText",
+        "displayName",
+        "predicates",
+        "scalarChildLinks"
+      ],
+      "properties": {
+        "nodeId": { "type": "integer" },
+        "treePart": { "type": "string" },
+        "nodeText": { "type": "string" },
+        "displayName": { "type": "string" },
+        "predicates": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "scalarChildLinks": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/childLink" }
+        }
+      }
+    },
+    "childLink": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "variable",
+        "description",
+        "displayName",
+        "childIndex",
+        "isPredicate"
+      ],
+      "properties": {
+        "type": { "type": "string" },
+        "variable": { "type": "string" },
+        "description": { "type": "string" },
+        "displayName": { "type": "string" },
+        "childIndex": { "type": "integer" },
+        "isPredicate": { "type": "boolean" }
+      }
+    }
+  }
+}

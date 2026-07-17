@@ -18,8 +18,8 @@ shared fixtures.
 - **Main entry sync/async** — `renderTreeTable` from `@spannerplan/core` returns
   a result synchronously on Node and a `Promise` in browsers. Use
   `@spannerplan/core/browser` when you always want async/await.
-- **Bundler** — browser builds need a bundler that imports `.wasm` (Vite,
-  Webpack 5+, etc.).
+- **Bundler** — browser builds need a bundler that resolves package-relative
+  `new URL(..., import.meta.url)` assets (Vite, Webpack 5+, etc.).
 - **Build from source** — changing the renderer requires Rust +
   `wasm32-unknown-unknown` + `wasm-pack` (`npm run build:wasm`).
 
@@ -86,13 +86,47 @@ YAML/JSON text with the `yaml` package, then sends a JSON object to slim WASM.
 - `Format`: `TRADITIONAL` | `CURRENT` | `COMPACT`
 - `RenderConfig`: `wrapWidth`, `hangingIndent`, `printSections`, scalar-var flags, etc.
 
+## Structured Plantree rows
+
+`plantreeRows` exposes the renderer's pre-order Plantree rows as typed data;
+it does not parse the formatted table. The Node main entry is synchronous (or
+a Promise in browser-like hosts), while the browser entry is always async.
+
+```ts
+import { plantreeRows, plantreeRowsOrThrow } from "@spannerplan/core";
+
+const response = await plantreeRows(plan, "CURRENT", { wrapWidth: 80 });
+if ("error" in response) throw new Error(response.error);
+for (const row of response.rows) {
+  console.log(row.nodeId, row.nodeText, row.scalarChildLinks);
+}
+
+const rows = await plantreeRowsOrThrow(plan);
+```
+
+The success envelope is `{ contractVersion: 1, rows }`; failures are
+`{ error }`. Each row has `nodeId`, `treePart`, `nodeText`, `displayName`,
+`predicates`, and ordered scalar child links. A child link includes its raw
+fields plus `isPredicate`, classified from the query-plan API. `PlantreeConfig`
+is deliberately narrow: `wrapWidth`, `hangingIndent`, and
+`disallowUnknownStats` only. See
+[`schema/plantree-rows-v1.schema.json`](../../../schema/plantree-rows-v1.schema.json).
+
+`plantreeRowsWire` accepts protobuf wire bytes. Import the browser entry when
+you always want a Promise:
+
+```ts
+import { plantreeRows } from "@spannerplan/core/browser";
+```
+
 ### Browser / bundler
 
 ```ts
 import { renderTreeTable } from "@spannerplan/core/browser";
 ```
 
-Requires a bundler that can import `.wasm` files (Vite, Webpack 5+, etc.).
+Requires a bundler that resolves package-relative
+`new URL(..., import.meta.url)` assets (Vite, Webpack 5+, etc.).
 
 ## `rendertree` CLI path (Node only)
 
@@ -113,7 +147,7 @@ npm run build:wasm -w @spannerplan/core
 ```
 
 Requires [`wasm-pack`](https://rustwasm.github.io/wasm-pack/) and the
-`wasm32-unknown-unknown` Rust target. The script builds slim `wasm/` (bundler,
+`wasm32-unknown-unknown` Rust target. The script builds slim `wasm/` (web,
 `wire` only) and full `wasm-node/` (`yaml`, `wire`, `cli`) from
 `crates/spannerplan-wasm`. Compare sizes with `scripts/measure-wasm-sizes.sh`.
 

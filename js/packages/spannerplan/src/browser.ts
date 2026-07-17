@@ -1,10 +1,16 @@
 import type {
   Format,
   PlanInput,
+  PlantreeConfig,
+  PlantreeRowsResponse,
   RenderConfig,
   RenderMode,
   RenderResponse,
 } from "./types.js";
+import {
+  parsePlantreeRowsResponse,
+  toPlantreeConfig,
+} from "./plantree.js";
 import { normalizePlanInput } from "./input-browser.js";
 import { getBrowserWasm } from "./wasm-browser.js";
 
@@ -86,6 +92,36 @@ export async function renderTreeTableWire(
   );
 }
 
+/** Return structured Plantree rows without parsing formatted table text. */
+export async function plantreeRows(
+  plan: PlanInput,
+  format: Format = "CURRENT",
+  config: PlantreeConfig = {},
+): Promise<PlantreeRowsResponse> {
+  const wasm = await getBrowserWasm();
+  const normalized = normalizePlanInput(plan);
+  if (normalized instanceof Uint8Array) {
+    return parsePlantreeRowsResponse(
+      wasm.spannerplanPlantreeRowsWire(normalized, format, toPlantreeConfig(config)),
+    );
+  }
+  return parsePlantreeRowsResponse(
+    wasm.spannerplanPlantreeRows([normalized, format, toPlantreeConfig(config)]),
+  );
+}
+
+/** Return structured Plantree rows from protobuf wire plan bytes. */
+export async function plantreeRowsWire(
+  planWire: Uint8Array,
+  format: Format = "CURRENT",
+  config: PlantreeConfig = {},
+): Promise<PlantreeRowsResponse> {
+  const wasm = await getBrowserWasm();
+  return parsePlantreeRowsResponse(
+    wasm.spannerplanPlantreeRowsWire(planWire, format, toPlantreeConfig(config)),
+  );
+}
+
 /** Convenience: reference render or throw on error. */
 export async function renderTreeTableOrThrow(
   plan: PlanInput,
@@ -98,6 +134,19 @@ export async function renderTreeTableOrThrow(
     throw new Error(result.error);
   }
   return result.output;
+}
+
+/** Convenience: structured Plantree rows or throw on error. */
+export async function plantreeRowsOrThrow(
+  plan: PlanInput,
+  format: Format = "CURRENT",
+  config: PlantreeConfig = {},
+) {
+  const result = await plantreeRows(plan, format, config);
+  if ("error" in result) {
+    throw new Error(result.error);
+  }
+  return result.rows;
 }
 
 export { getBrowserWasm } from "./wasm-browser.js";

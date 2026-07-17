@@ -42,6 +42,46 @@ export interface RenderError {
 
 export type RenderResponse = RenderResult | RenderError;
 
+/** Formatting and validation options for the structured Plantree API. */
+export interface PlantreeConfig {
+  wrapWidth?: number;
+  hangingIndent?: boolean;
+  disallowUnknownStats?: boolean;
+}
+
+/** A scalar child link attached to a rendered Plantree row. */
+export interface PlantreeChildLink {
+  type: string;
+  variable: string;
+  description: string;
+  displayName: string;
+  childIndex: number;
+  /** Classified by the query-plan API, not inferred from rendered text. */
+  isPredicate: boolean;
+}
+
+/** One pre-order row from the structured Plantree representation. */
+export interface PlantreeRow {
+  nodeId: number;
+  treePart: string;
+  nodeText: string;
+  displayName: string;
+  predicates: string[];
+  scalarChildLinks: PlantreeChildLink[];
+}
+
+/** Version 1 success envelope from the structured Plantree WASM API. */
+export interface PlantreeRowsResult {
+  contractVersion: 1;
+  rows: PlantreeRow[];
+}
+
+export interface PlantreeRowsError {
+  error: string;
+}
+
+export type PlantreeRowsResponse = PlantreeRowsResult | PlantreeRowsError;
+
 export interface RendertreeResult {
   kind: "rendered";
   output: string;
@@ -79,6 +119,13 @@ export type BytesInput = Uint8Array | Buffer | string;
 export function isRenderError(
   response: RenderResponse,
 ): response is RenderError {
+  return "error" in response;
+}
+
+/** True when a structured Plantree response is an error envelope. */
+export function isPlantreeRowsError(
+  response: PlantreeRowsResponse,
+): response is PlantreeRowsError {
   return "error" in response;
 }
 

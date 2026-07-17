@@ -38,11 +38,12 @@ build_variant() {
   local name="$1"
   local features="$2"
   local label="$3"
+  local target="$4"
   local out="$OUT_DIR/pack-$name"
 
-  echo "==> wasm-pack: $label (features: ${features:-<none>})"
+  echo "==> wasm-pack: $label (target: $target; features: ${features:-<none>})"
   rm -rf "$out"
-  local pack_args=(build --release --target bundler --out-dir "$out")
+  local pack_args=(build --release --target "$target" --out-dir "$out")
   if [[ -n "$features" ]]; then
     "$WASM_PACK" "${pack_args[@]}" -- --no-default-features --features "$features"
   else
@@ -65,13 +66,13 @@ build_variant() {
 cd "$WASM_CRATE"
 
 # Production targets (see js/packages/spannerplan/scripts/build-wasm.sh)
-build_variant "browser-slim" "wire" "browser slim (wire+json, host YAML) [@spannerplan/core wasm/]"
-build_variant "node-full" "yaml,wire,cli" "node full (yaml+wire+cli) [@spannerplan/core wasm-node/]"
+build_variant "browser-slim" "wire" "browser slim (wire+json, host YAML) [@spannerplan/core wasm/]" "web"
+build_variant "node-full" "yaml,wire,cli" "node full (yaml+wire+cli) [@spannerplan/core wasm-node/]" "nodejs"
 
 # Reference variants
-build_variant "core-minimal" "" "core minimal (renderer+json only)"
-build_variant "core-yaml-only" "yaml" "core (yaml only)"
-build_variant "cli-bundle" "yaml,cli" "cli bundle (yaml+cli, no wire)"
+build_variant "core-minimal" "" "core minimal (renderer+json only)" "bundler"
+build_variant "core-yaml-only" "yaml" "core (yaml only)" "bundler"
+build_variant "cli-bundle" "yaml,cli" "cli bundle (yaml+cli, no wire)" "bundler"
 
 printf '\n%-48s %10s %10s\n' "variant" "wasm-opt" "gzip"
 printf '%s\n' "--------------------------------------------------------------------------------"

@@ -114,6 +114,25 @@ pub struct RenderConfig {
     pub process_plan_options: Option<ProcessPlanOptions>,
 }
 
+/// The small, structured-row rendering configuration.
+///
+/// This deliberately excludes table render mode and scalar-appendix options:
+/// callers receive the rendered rows directly and can make presentation
+/// choices themselves.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase", default))]
+pub struct PlantreeConfig {
+    /// Maximum total rendered line width, including the tree prefix. `0`
+    /// disables wrapping; negative values return an error.
+    pub wrap_width: i32,
+    /// Hang wrapped continuation lines after node-local prefixes such as
+    /// `[Input] ` instead of tree-aligned indentation.
+    pub hanging_indent: bool,
+    /// Fail on unknown execution-stat keys.
+    pub disallow_unknown_stats: bool,
+}
+
 /// Errors from the render entry points and parse functions. `Display`
 /// output matches the Go error strings the upstream tests assert on.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -202,6 +221,38 @@ pub fn render_tree_table_with_config(
     .map_err(RenderTreeTableError::Appendix)?;
 
     Ok(format!("{table_part}{appendix_part}"))
+}
+
+/// Converts plan nodes to structured Plantree rows for the given format.
+///
+/// Unlike [`render_tree_table_with_config`], this entry point has no table
+/// render mode or scalar-appendix configuration. It is the stable high-level
+/// contract for consumers that need row structure instead of final text.
+pub fn plantree_rows(
+    plan_nodes: &[PlanNode],
+    format: Format,
+    config: &PlantreeConfig,
+) -> Result<Vec<RowWithPredicates>, RenderTreeTableError> {
+    if plan_nodes.is_empty() {
+        return Err(RenderTreeTableError::EmptyPlanNodes);
+    }
+    if config.wrap_width < 0 {
+        return Err(RenderTreeTableError::NegativeWrapWidth(config.wrap_width));
+    }
+
+    let qp = QueryPlan::new(plan_nodes.to_vec()).map_err(RenderTreeTableError::QueryPlan)?;
+    let mut opts = opts_for_format(format);
+    if config.disallow_unknown_stats {
+        opts.disallow_unknown_stats = true;
+    }
+    if config.wrap_width > 0 {
+        opts = opts.with_wrap_width(config.wrap_width);
+    }
+    if config.hanging_indent {
+        opts = opts.with_hanging_indent();
+    }
+
+    plantree::process_plan(&qp, &opts).map_err(RenderTreeTableError::Process)
 }
 
 /// Converts Spanner plan nodes into rendered rows for the given format.
@@ -404,6 +455,50 @@ mod tests {
         )
         .unwrap_err();
         assert!(err.to_string().contains("wrapWidth cannot be negative"));
+    }
+
+    #[test]
+    fn plantree_rows_uses_format_and_narrow_config() {
+        let mut scan = relational(0, "Batch Scan", vec![]);
+        scan.metadata.insert(
+            "execution_method".to_string(),
+            crate::model::MetadataValue::String("Row".to_string()),
+        );
+
+        let rows = plantree_rows(
+            &[scan],
+            Format::Current,
+            &PlantreeConfig {
+                wrap_width: 0,
+                hanging_indent: false,
+                disallow_unknown_stats: false,
+            },
+        )
+        .unwrap();
+        assert_eq!(rows[0].node_text, "Batch Scan <Row>");
+    }
+
+    #[test]
+    fn plantree_rows_reports_high_level_errors() {
+        assert_eq!(
+            plantree_rows(&[], Format::Current, &PlantreeConfig::default())
+                .unwrap_err()
+                .to_string(),
+            "planNodes cannot be empty"
+        );
+        assert_eq!(
+            plantree_rows(
+                &[PlanNode::default()],
+                Format::Current,
+                &PlantreeConfig {
+                    wrap_width: -1,
+                    ..PlantreeConfig::default()
+                },
+            )
+            .unwrap_err()
+            .to_string(),
+            "wrapWidth cannot be negative: -1"
+        );
     }
 
     #[test]

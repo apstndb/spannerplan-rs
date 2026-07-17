@@ -4,11 +4,17 @@ import type {
   BytesInput,
   Format,
   PlanInput,
+  PlantreeConfig,
+  PlantreeRowsResponse,
   RenderConfig,
   RenderMode,
   RenderResponse,
   RendertreeResponse,
 } from "./types.js";
+import {
+  parsePlantreeRowsResponse,
+  toPlantreeConfig,
+} from "./plantree.js";
 import { getBrowserWasm, getNodeWasm, isNodeRuntime } from "./wasm-node.js";
 
 interface RawRenderResponse {
@@ -92,6 +98,40 @@ function renderTreeTableNode(
   return parseRenderResponse(wasm.spannerplanRenderTreeTable(args));
 }
 
+function plantreeRowsNode(
+  plan: string | Uint8Array | Record<string, unknown>,
+  format: Format,
+  config: PlantreeConfig,
+): PlantreeRowsResponse {
+  const wasm = getNodeWasm();
+  const normalized = normalizePlanInput(plan);
+  if (normalized instanceof Uint8Array) {
+    return parsePlantreeRowsResponse(
+      wasm.spannerplanPlantreeRowsWire(normalized, format, toPlantreeConfig(config)),
+    );
+  }
+  return parsePlantreeRowsResponse(
+    wasm.spannerplanPlantreeRows([normalized, format, toPlantreeConfig(config)]),
+  );
+}
+
+async function plantreeRowsBrowser(
+  plan: string | Uint8Array | Record<string, unknown>,
+  format: Format,
+  config: PlantreeConfig,
+): Promise<PlantreeRowsResponse> {
+  const wasm = await getBrowserWasm();
+  const normalized = normalizePlanInputBrowser(plan);
+  if (normalized instanceof Uint8Array) {
+    return parsePlantreeRowsResponse(
+      wasm.spannerplanPlantreeRowsWire(normalized, format, toPlantreeConfig(config)),
+    );
+  }
+  return parsePlantreeRowsResponse(
+    wasm.spannerplanPlantreeRows([normalized, format, toPlantreeConfig(config)]),
+  );
+}
+
 async function renderTreeTableBrowser(
   plan: string | Uint8Array | Record<string, unknown>,
   mode: RenderMode,
@@ -153,6 +193,40 @@ export function renderTreeTableWire(
 }
 
 /**
+ * Return structured Plantree rows without parsing formatted table text.
+ * Node.js returns synchronously; browser hosts return a Promise.
+ */
+export function plantreeRows(
+  plan: PlanInput,
+  format: Format = "CURRENT",
+  config: PlantreeConfig = {},
+): PlantreeRowsResponse | Promise<PlantreeRowsResponse> {
+  if (isNodeRuntime()) {
+    return plantreeRowsNode(plan, format, config);
+  }
+  return plantreeRowsBrowser(plan, format, config);
+}
+
+/** Return structured Plantree rows from protobuf wire plan bytes. */
+export function plantreeRowsWire(
+  planWire: Uint8Array,
+  format: Format = "CURRENT",
+  config: PlantreeConfig = {},
+): PlantreeRowsResponse | Promise<PlantreeRowsResponse> {
+  const cfg = toPlantreeConfig(config);
+  if (isNodeRuntime()) {
+    return parsePlantreeRowsResponse(
+      getNodeWasm().spannerplanPlantreeRowsWire(planWire, format, cfg),
+    );
+  }
+  return getBrowserWasm().then((wasm) =>
+    parsePlantreeRowsResponse(
+      wasm.spannerplanPlantreeRowsWire(planWire, format, cfg),
+    ),
+  );
+}
+
+/**
  * Render stdin bytes with `rendertree` CLI semantics (matches Go/Rust CLI).
  * Node only.
  */
@@ -180,6 +254,19 @@ export async function renderTreeTableOrThrow(
     throw new Error(result.error);
   }
   return result.output;
+}
+
+/** Convenience: structured Plantree rows or throw on error. */
+export async function plantreeRowsOrThrow(
+  plan: PlanInput,
+  format: Format = "CURRENT",
+  config: PlantreeConfig = {},
+) {
+  const result = await plantreeRows(plan, format, config);
+  if ("error" in result) {
+    throw new Error(result.error);
+  }
+  return result.rows;
 }
 
 /** Convenience: rendertree render or throw on error. */
