@@ -65,8 +65,8 @@ jobs:
       - name: Check
         run: cargo check --locked
 
-      - name: Compile tests
-        run: cargo test --no-run --locked
+      - name: Test
+        run: cargo test --locked
 
   node:
     runs-on: ubuntu-latest
