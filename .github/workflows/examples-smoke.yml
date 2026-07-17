@@ -31,6 +31,13 @@ jobs:
           go-version-file: examples/spanner-client/go/go.mod
           cache-dependency-path: examples/spanner-client/go/go.sum
 
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build FFI library
+        run: cargo build --manifest-path ../../../Cargo.toml -p spannerplan-ffi
+
       - name: Build
         run: go build ./...
 
