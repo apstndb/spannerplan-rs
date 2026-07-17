@@ -2464,8 +2464,8 @@ version = "0.0.0"
 dependencies = [
  "google-cloud-googleapis",
  "google-cloud-spanner",
- "prost 0.13.5",
- "prost-types 0.13.5",
+ "prost 0.14.4",
+ "prost-types 0.14.4",
  "serde_json",
  "spannerplan",
  "tokio",
