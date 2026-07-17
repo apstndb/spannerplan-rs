@@ -9,11 +9,54 @@ JS_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 REPO_ROOT="$(cd "$JS_ROOT/.." && pwd)"
 WORK="$(mktemp -d)"
 server_pid=""
-cleanup() {
-  if [[ -n "$server_pid" ]]; then
-    kill "$server_pid" 2>/dev/null || true
-    wait "$server_pid" 2>/dev/null || true
+stop_server() {
+  local pid="$server_pid"
+  server_pid=""
+  if [[ -n "$pid" ]]; then
+    kill "$pid" 2>/dev/null || true
+    wait "$pid" 2>/dev/null || true
   fi
+}
+
+print_browser_smoke_failure() {
+  local label="$1"
+  local reason="$2"
+  local chrome_log="$3"
+  local server_log="$4"
+  local dom="$5"
+  local dom_status=""
+
+  {
+    echo "browser smoke failed (${label}): ${reason}"
+    echo "--- Chrome stderr (${label}) ---"
+    if [[ -s "$chrome_log" ]]; then
+      cat "$chrome_log"
+    else
+      echo "(empty)"
+    fi
+    echo "--- smoke server log (${label}) ---"
+    if [[ -s "$server_log" ]]; then
+      cat "$server_log"
+    else
+      echo "(empty)"
+    fi
+    echo "--- browser DOM (${label}) ---"
+    if [[ -f "$dom" ]]; then
+      dom_status="$(grep -Eom1 'data-status="[^"]*"' "$dom" || true)"
+      if [[ -n "$dom_status" ]]; then
+        echo "DOM status: ${dom_status}"
+      else
+        echo "DOM status: no data-status attribute"
+      fi
+      cat "$dom"
+    else
+      echo "(not written)"
+    fi
+  } >&2
+}
+
+cleanup() {
+  stop_server
   rm -rf "$WORK"
 }
 trap cleanup EXIT
@@ -84,12 +127,18 @@ run_browser_smoke() {
   local mime="$1"
   local label="$2"
   local server_log="$WORK/server-${label}.log"
+  local chrome_log="$WORK/chrome-${label}.log"
   local dom="$WORK/dom-${label}.html"
-  server_pid=""
+  local profile_dir="$WORK/chrome-profile-${label}"
+  local port=""
+  local chrome_status=0
+
+  stop_server
+  mkdir "$profile_dir"
+  : >"$chrome_log"
   RELEASE_SMOKE_WASM_MIME="$mime" node "$JS_ROOT/examples/release-browser-smoke/server.mjs" \
     "$browser_consumer/dist" >"$server_log" 2>&1 &
   server_pid=$!
-  local port=""
   for _ in {1..50}; do
     if [[ -s "$server_log" ]]; then
       port="$(sed -n '1p' "$server_log")"
@@ -98,20 +147,54 @@ run_browser_smoke() {
     sleep 0.1
   done
   if [[ ! "$port" =~ ^[0-9]+$ ]]; then
-    cat "$server_log" >&2
+    stop_server
+    print_browser_smoke_failure "$label" "server did not report a listening port" \
+      "$chrome_log" "$server_log" "$dom"
     return 1
   fi
-  "$chrome_bin" --headless=new --no-sandbox --disable-gpu --dump-dom \
-    --virtual-time-budget=10000 "http://127.0.0.1:${port}/" >"$dom" 2>"$WORK/chrome-${label}.log"
-  kill "$server_pid" 2>/dev/null || true
-  wait "$server_pid" 2>/dev/null || true
-  server_pid=""
-  grep -Eq 'data-status="ok"' "$dom"
-  grep -Eq '"contractVersion":1' "$dom"
-  grep -Eq '"rowCount":[1-9][0-9]*' "$dom"
-  grep -Eq '"rootNodeId":0' "$dom"
-  grep -Fq '"rootNodeText":"Distributed Union on AlbumsByAlbumTitle &lt;Row&gt;"' "$dom"
-  grep -Eq '"predicateLinks":[1-9][0-9]*' "$dom"
+  if "$chrome_bin" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage \
+    "--user-data-dir=${profile_dir}" --dump-dom --virtual-time-budget=10000 \
+    "http://127.0.0.1:${port}/" >"$dom" 2>"$chrome_log"; then
+    chrome_status=0
+  else
+    chrome_status=$?
+  fi
+  stop_server
+  if [[ "$chrome_status" -ne 0 ]]; then
+    print_browser_smoke_failure "$label" "Chrome exited with status ${chrome_status}" \
+      "$chrome_log" "$server_log" "$dom"
+    return 1
+  fi
+  if ! grep -Eq 'data-status="ok"' "$dom"; then
+    print_browser_smoke_failure "$label" "DOM assertion failed: data-status=ok" \
+      "$chrome_log" "$server_log" "$dom"
+    return 1
+  fi
+  if ! grep -Eq '"contractVersion":1' "$dom"; then
+    print_browser_smoke_failure "$label" "DOM assertion failed: contractVersion=1" \
+      "$chrome_log" "$server_log" "$dom"
+    return 1
+  fi
+  if ! grep -Eq '"rowCount":[1-9][0-9]*' "$dom"; then
+    print_browser_smoke_failure "$label" "DOM assertion failed: nonzero rowCount" \
+      "$chrome_log" "$server_log" "$dom"
+    return 1
+  fi
+  if ! grep -Eq '"rootNodeId":0' "$dom"; then
+    print_browser_smoke_failure "$label" "DOM assertion failed: rootNodeId=0" \
+      "$chrome_log" "$server_log" "$dom"
+    return 1
+  fi
+  if ! grep -Fq '"rootNodeText":"Distributed Union on AlbumsByAlbumTitle &lt;Row&gt;"' "$dom"; then
+    print_browser_smoke_failure "$label" "DOM assertion failed: root node text" \
+      "$chrome_log" "$server_log" "$dom"
+    return 1
+  fi
+  if ! grep -Eq '"predicateLinks":[1-9][0-9]*' "$dom"; then
+    print_browser_smoke_failure "$label" "DOM assertion failed: nonzero predicateLinks" \
+      "$chrome_log" "$server_log" "$dom"
+    return 1
+  fi
   echo "browser smoke passed (${label}, WASM MIME ${mime})"
 }
 
