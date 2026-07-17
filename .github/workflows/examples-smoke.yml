@@ -1,14 +1,16 @@
-name: Spanner client examples
+name: Auxiliary tooling and client examples
 
 on:
   push:
     branches: [main]
     paths:
       - "examples/spanner-client/**"
+      - "lab/genstructuredgolden/**"
       - ".github/workflows/examples-smoke.yml"
   pull_request:
     paths:
       - "examples/spanner-client/**"
+      - "lab/genstructuredgolden/**"
       - ".github/workflows/examples-smoke.yml"
   schedule:
     - cron: "37 8 * * 1"
@@ -82,3 +84,23 @@ jobs:
           for file in *.mjs; do
             node --check "$file"
           done
+
+  structured-golden:
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ github.event_name == 'schedule' }}
+    defaults:
+      run:
+        working-directory: lab/genstructuredgolden
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: lab/genstructuredgolden/go.mod
+          cache-dependency-path: lab/genstructuredgolden/go.sum
+
+      - name: Test
+        run: go test ./...
+
+      - name: Verify structured goldens
+        run: go run . -repo-root ../.. -check
