@@ -52,12 +52,11 @@ gh release download v0.1.0-alpha.2 --repo apstndb/spannerplan-rs --pattern 'span
 npm install ./spannerplan-core-0.1.0-alpha.2.tgz
 ```
 
-From git (builds WASM from source):
+From a clone or submodule (builds WASM from source):
 
-```json
-{
-  "dependencies": {
-    "@spannerplan/core": "github:apstndb/spannerplan-rs#v0.1.0-alpha.2&path:js/packages/spannerplan"
-  }
-}
+```bash
+git clone --depth 1 --branch v0.1.0-alpha.2 https://github.com/apstndb/spannerplan-rs
+cd spannerplan-rs/js
+npm install
+npm run build -w @spannerplan/core
 ```

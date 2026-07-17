@@ -27,7 +27,7 @@ gh release download "$TAG" --repo "$REPO" --dir "$ASSETS" --clobber \
   --pattern "spannerplan-cli-${VERSION}.tgz"
 
 echo "==> Verifying published checksums"
-(cd "$ASSETS" && sha256sum -c SHA256SUMS.txt)
+bash "$ROOT/scripts/verify-release-checksums.sh" "$ASSETS/SHA256SUMS.txt"
 
 echo "==> Rust git dependency ($TAG)"
 mkdir -p "$WORK/rust-consumer/src"

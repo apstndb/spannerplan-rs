@@ -1,6 +1,7 @@
 //! Fetch QueryPlan via google-cloud-spanner (gRPC) and render with native spannerplan.
 
 use std::env;
+use std::fmt;
 use std::fs;
 use std::path::PathBuf;
 
@@ -144,16 +145,68 @@ fn render_mode_for(mode: &str) -> &'static str {
     }
 }
 
-fn encode_query_plan(plan: QueryPlan) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+#[derive(Debug, PartialEq, Eq)]
+struct PlanConversionError {
+    plan_node_position: usize,
+    plan_node_index: i32,
+    path: String,
+    message: String,
+}
+
+impl PlanConversionError {
+    fn new(
+        plan_node_position: usize,
+        plan_node_index: i32,
+        path: impl Into<String>,
+        message: impl Into<String>,
+    ) -> Self {
+        Self {
+            plan_node_position,
+            plan_node_index,
+            path: path.into(),
+            message: message.into(),
+        }
+    }
+}
+
+impl fmt::Display for PlanConversionError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "plan_nodes[{}] (PlanNode index {}) {}: {}",
+            self.plan_node_position, self.plan_node_index, self.path, self.message
+        )
+    }
+}
+
+impl std::error::Error for PlanConversionError {}
+
+fn encode_query_plan(plan: QueryPlan) -> Result<Vec<u8>, PlanConversionError> {
     let plan_nodes = plan
         .plan_nodes
         .into_iter()
-        .map(encode_plan_node)
+        .enumerate()
+        .map(|(position, node)| encode_plan_node(node, position))
         .collect::<Result<Vec<_>, _>>()?;
     Ok(v1::QueryPlan { plan_nodes }.encode_to_vec())
 }
 
-fn encode_plan_node(node: PlanNode) -> Result<v1::PlanNode, Box<dyn std::error::Error>> {
+fn encode_plan_node(
+    node: PlanNode,
+    plan_node_position: usize,
+) -> Result<v1::PlanNode, PlanConversionError> {
+    let plan_node_index = node.index;
+    let kind = node.kind.value().ok_or_else(|| {
+        PlanConversionError::new(
+            plan_node_position,
+            plan_node_index,
+            "kind",
+            format!(
+                "cannot map enum value {} to its numeric protobuf value",
+                node.kind
+            ),
+        )
+    })?;
     let child_links = node
         .child_links
         .into_iter()
@@ -169,40 +222,132 @@ fn encode_plan_node(node: PlanNode) -> Result<v1::PlanNode, Box<dyn std::error::
                 description: short.description,
                 subqueries: short.subqueries,
             });
+    let metadata = node
+        .metadata
+        .map(|value| encode_struct(value, plan_node_position, plan_node_index, "metadata"))
+        .transpose()?;
+    let execution_stats = node
+        .execution_stats
+        .map(|value| {
+            encode_struct(
+                value,
+                plan_node_position,
+                plan_node_index,
+                "execution_stats",
+            )
+        })
+        .transpose()?;
     Ok(v1::PlanNode {
-        index: node.index,
-        kind: node.kind.value().unwrap_or_default(),
+        index: plan_node_index,
+        kind,
         display_name: node.display_name,
         child_links,
         short_representation,
-        metadata: node.metadata.map(encode_struct),
-        execution_stats: node.execution_stats.map(encode_struct),
+        metadata,
+        execution_stats,
     })
 }
 
-fn encode_struct(value: serde_json::Map<String, serde_json::Value>) -> prost_types::Struct {
-    prost_types::Struct {
-        fields: value
-            .into_iter()
-            .map(|(key, value)| (key, encode_value(value)))
-            .collect(),
-    }
+fn encode_struct(
+    value: serde_json::Map<String, serde_json::Value>,
+    plan_node_position: usize,
+    plan_node_index: i32,
+    path: &str,
+) -> Result<prost_types::Struct, PlanConversionError> {
+    let fields = value
+        .into_iter()
+        .map(|(key, value)| {
+            let value_path = format!("{path}.{key}");
+            encode_value(value, plan_node_position, plan_node_index, &value_path)
+                .map(|value| (key, value))
+        })
+        .collect::<Result<_, _>>()?;
+    Ok(prost_types::Struct { fields })
 }
 
-fn encode_value(value: serde_json::Value) -> prost_types::Value {
+fn encode_value(
+    value: serde_json::Value,
+    plan_node_position: usize,
+    plan_node_index: i32,
+    path: &str,
+) -> Result<prost_types::Value, PlanConversionError> {
     use prost_types::value::Kind;
 
     let kind = match value {
         serde_json::Value::Null => Kind::NullValue(0),
         serde_json::Value::Bool(value) => Kind::BoolValue(value),
-        serde_json::Value::Number(value) => Kind::NumberValue(value.as_f64().unwrap_or_default()),
+        serde_json::Value::Number(value) => Kind::NumberValue(encode_number(
+            &value,
+            plan_node_position,
+            plan_node_index,
+            path,
+        )?),
         serde_json::Value::String(value) => Kind::StringValue(value),
         serde_json::Value::Array(values) => Kind::ListValue(prost_types::ListValue {
-            values: values.into_iter().map(encode_value).collect(),
+            values: values
+                .into_iter()
+                .enumerate()
+                .map(|(index, value)| {
+                    encode_value(
+                        value,
+                        plan_node_position,
+                        plan_node_index,
+                        &format!("{path}[{index}]"),
+                    )
+                })
+                .collect::<Result<_, _>>()?,
         }),
-        serde_json::Value::Object(value) => Kind::StructValue(encode_struct(value)),
+        serde_json::Value::Object(value) => Kind::StructValue(encode_struct(
+            value,
+            plan_node_position,
+            plan_node_index,
+            path,
+        )?),
     };
-    prost_types::Value { kind: Some(kind) }
+    Ok(prost_types::Value { kind: Some(kind) })
+}
+
+fn encode_number(
+    value: &serde_json::Number,
+    plan_node_position: usize,
+    plan_node_index: i32,
+    path: &str,
+) -> Result<f64, PlanConversionError> {
+    let exact_integer = if let Some(value) = value.as_u64() {
+        integer_magnitude_is_exact_f64(value)
+    } else if let Some(value) = value.as_i64() {
+        integer_magnitude_is_exact_f64(value.unsigned_abs())
+    } else {
+        true
+    };
+    if !exact_integer {
+        return Err(PlanConversionError::new(
+            plan_node_position,
+            plan_node_index,
+            path,
+            format!(
+                "JSON integer {value} cannot be represented exactly as protobuf number_value (f64)"
+            ),
+        ));
+    }
+
+    value.as_f64().ok_or_else(|| {
+        PlanConversionError::new(
+            plan_node_position,
+            plan_node_index,
+            path,
+            format!("JSON number {value} cannot be represented as protobuf number_value (f64)"),
+        )
+    })
+}
+
+fn integer_magnitude_is_exact_f64(value: u64) -> bool {
+    if value == 0 {
+        return true;
+    }
+    let significant_bits = u64::BITS - value.leading_zeros();
+    significant_bits <= f64::MANTISSA_DIGITS
+        || value.trailing_zeros() >= significant_bits - f64::MANTISSA_DIGITS
 }
 
 async fn fetch_query_plan_wire(
@@ -224,7 +369,7 @@ async fn fetch_query_plan_wire(
         .stats()
         .and_then(|stats| stats.query_plan.clone())
         .ok_or_else(|| format!("QueryPlan missing from {query_mode}-mode execute_sql response"))?;
-    encode_query_plan(plan)
+    Ok(encode_query_plan(plan)?)
 }
 
 #[tokio::main]
@@ -246,4 +391,138 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     print!("{output}");
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use google_cloud_spanner::model::plan_node::{ChildLink, Kind, ShortRepresentation};
+    use prost_types::value::Kind as ValueKind;
+    use serde_json::json;
+
+    use super::*;
+
+    fn struct_map(value: serde_json::Value) -> serde_json::Map<String, serde_json::Value> {
+        value
+            .as_object()
+            .expect("test value must be an object")
+            .clone()
+    }
+
+    #[test]
+    fn rejects_unmappable_plan_node_kind_with_node_context() {
+        let node = PlanNode::new()
+            .set_index(17)
+            .set_kind(Kind::from("FUTURE_KIND"));
+        let plan = QueryPlan::new().set_plan_nodes([PlanNode::new(), node]);
+
+        let error = encode_query_plan(plan).unwrap_err();
+
+        assert_eq!(error.plan_node_position, 1);
+        assert_eq!(error.plan_node_index, 17);
+        assert_eq!(error.path, "kind");
+        assert!(error.to_string().contains("FUTURE_KIND"));
+    }
+
+    #[test]
+    fn preserves_unknown_numeric_plan_node_kind() {
+        let node = PlanNode::new().set_kind(Kind::from(99));
+
+        let encoded = encode_plan_node(node, 0).unwrap();
+
+        assert_eq!(encoded.kind, 99);
+    }
+
+    #[test]
+    fn rejects_inexact_integer_with_nested_metadata_path() {
+        // serde_json is built without arbitrary_precision here, so as_f64() is
+        // always Some. This is the stronger failure mode: the conversion exists
+        // but would silently round 2^53 + 1.
+        let large_integer = 9_007_199_254_740_993_u64;
+        let number = serde_json::Number::from(large_integer);
+        assert_eq!(number.as_f64(), Some(9_007_199_254_740_992.0));
+        let node = PlanNode::new()
+            .set_index(23)
+            .set_metadata(struct_map(json!({
+                "outer": [{ "large": large_integer }]
+            })));
+
+        let error = encode_plan_node(node, 4).unwrap_err();
+
+        assert_eq!(error.plan_node_position, 4);
+        assert_eq!(error.plan_node_index, 23);
+        assert_eq!(error.path, "metadata.outer[0].large");
+        assert!(error.to_string().contains("cannot be represented exactly"));
+    }
+
+    #[test]
+    fn reports_nested_execution_stats_path() {
+        let node = PlanNode::new()
+            .set_index(29)
+            .set_execution_stats(struct_map(json!({
+                "metrics": { "samples": [1, 9_007_199_254_740_993_u64] }
+            })));
+
+        let error = encode_plan_node(node, 5).unwrap_err();
+
+        assert_eq!(error.plan_node_position, 5);
+        assert_eq!(error.plan_node_index, 29);
+        assert_eq!(error.path, "execution_stats.metrics.samples[1]");
+    }
+
+    #[test]
+    fn preserves_all_plan_node_fields() {
+        let node = PlanNode::new()
+            .set_index(7)
+            .set_kind(Kind::Relational)
+            .set_display_name("Distributed Union")
+            .set_child_links([ChildLink::new()
+                .set_child_index(8)
+                .set_type("Child")
+                .set_variable("row")])
+            .set_short_representation(
+                ShortRepresentation::new()
+                    .set_description("short")
+                    .set_subqueries([("subquery", 9)]),
+            )
+            .set_metadata(struct_map(json!({
+                "flag": true,
+                "nested": { "value": "metadata" }
+            })))
+            .set_execution_stats(struct_map(json!({
+                "rows": 42,
+                "ratio": 1.5,
+                "exact_large_integer": 9_223_372_036_854_775_808_u64
+            })));
+
+        let encoded = encode_plan_node(node, 0).unwrap();
+
+        assert_eq!(encoded.index, 7);
+        assert_eq!(encoded.kind, 1);
+        assert_eq!(encoded.display_name, "Distributed Union");
+        assert_eq!(encoded.child_links.len(), 1);
+        assert_eq!(encoded.child_links[0].child_index, 8);
+        assert_eq!(encoded.child_links[0].r#type, "Child");
+        assert_eq!(encoded.child_links[0].variable, "row");
+        let short = encoded.short_representation.unwrap();
+        assert_eq!(short.description, "short");
+        assert_eq!(short.subqueries["subquery"], 9);
+        let metadata = encoded.metadata.unwrap();
+        assert!(matches!(
+            metadata.fields["flag"].kind,
+            Some(ValueKind::BoolValue(true))
+        ));
+        let stats = encoded.execution_stats.unwrap();
+        assert!(matches!(
+            stats.fields["rows"].kind,
+            Some(ValueKind::NumberValue(42.0))
+        ));
+        assert!(matches!(
+            stats.fields["ratio"].kind,
+            Some(ValueKind::NumberValue(1.5))
+        ));
+        assert!(matches!(
+            stats.fields["exact_large_integer"].kind,
+            Some(ValueKind::NumberValue(9_223_372_036_854_775_808.0))
+        ));
+    }
 }

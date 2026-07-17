@@ -53,4 +53,29 @@ if is_error.value != 0:
     raise SystemExit(f"render failed: {text}")
 if "Distributed Cross Apply" not in text:
     raise SystemExit("unexpected render output")
+
+nul_plan = (
+    b'{"planNodes":[{"index":0,"kind":"RELATIONAL",'
+    b'"displayName":"Scan\\u0000Injected"}]}'
+)
+is_error = ctypes.c_int(0)
+out = lib.spannerplan_render_tree_table_json(
+    nul_plan,
+    b"AUTO",
+    b"CURRENT",
+    None,
+    ctypes.byref(is_error),
+)
+if not out:
+    raise SystemExit("interior-NUL render returned NULL")
+try:
+    text = ctypes.string_at(out).decode("utf-8")
+finally:
+    lib.spannerplan_string_free(out)
+
+if is_error.value != 1:
+    raise SystemExit(f"interior-NUL render returned status {is_error.value}, expected 1")
+if text != "render result contains an interior NUL byte":
+    raise SystemExit(f"unexpected interior-NUL diagnostic: {text!r}")
+
 print("ctypes smoke test ok")

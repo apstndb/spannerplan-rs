@@ -9,12 +9,23 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  release-portability:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify stock macOS checksum selection
+        run: bash scripts/test-verify-release-checksums.sh shasum
+
   rust:
     runs-on: ubuntu-latest
     env:
       SPANNERPLAN_GO_PARITY: "1"
     steps:
       - uses: actions/checkout@v4
+
+      - name: Check release documentation
+        run: bash scripts/check-release-docs.sh
 
       - uses: dtolnay/rust-toolchain@stable
         with:
