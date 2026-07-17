@@ -746,6 +746,27 @@ carries raw link fields plus an `isPredicate` classification from
 checksum-pinned bundled boundary, not an external API, and may change in any
 prerelease without a deprecation window.
 
+### 6.11 Structural signature (alpha core API)
+
+`spannerplan_core::plantree::structural_signature` returns a deterministic,
+byte-length-framed representation of visible relational occurrences. The
+version line is `spannerplan.structural_signature.v1alpha1`. It includes raw
+operator display names, the actual parent child-link type, typed recursively
+sorted metadata, predicates in `ChildLinks` order, and DAG expansion. It omits
+node IDs, execution statistics, and `subquery_cluster_node` at every metadata
+struct depth.
+
+This API is alpha-only: equality is meaningful only within the same encoding
+revision, not as a stable cross-version or cross-language interchange contract.
+It is distinct from the viewer's internal Plantree-row DTO. The core uses a
+`no_std` Ryu-based implementation compatible with Go
+`strconv.FormatFloat(v, 'g', -1, 64)`, and fails closed for non-finite metadata
+numbers. The protobuf wire decoder guards signature-included PlanNode metadata
+Struct/Value/ListValue raw fields before prost conversion so unknown fields,
+unset values, and invalid null enums cannot be silently normalized. Excluded
+execution/query statistics and `subquery_cluster_node` values are not guarded.
+This slice deliberately adds no WASM, FFI, or JavaScript export.
+
 ---
 
 ## 7. Cross-cutting details & gotchas

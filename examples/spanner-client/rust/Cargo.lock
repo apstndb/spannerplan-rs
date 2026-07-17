@@ -2487,6 +2487,7 @@ dependencies = [
  "prost-build",
  "prost-types 0.14.4",
  "protox",
+ "ryu",
  "serde",
  "unicode-segmentation",
  "unicode-width 0.2.2",

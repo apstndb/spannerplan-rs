@@ -14,7 +14,8 @@ fixture copies retain the tag from which their source bytes were copied.
 | `reference/` | Copied verbatim from Go repo | `plantree/reference/testdata/` | `v0.2.1` | 2026-07-08 |
 | `rendertree/` | Copied verbatim from Go repo | `cmd/rendertree/impl/testdata/` | `v0.2.1` | 2026-07-08 |
 | `golden/` | Machine-generated from Go repo | rendered via `lab/genrsgolden` | `v0.2.1` | 2026-07-08 |
-| `golden/*_plantree_rows_current.json` | Machine-generated from Go repo | projected via `lab/genstructuredgolden` | `v0.3.0-alpha.1` | 2026-07-18 |
+| `golden/*_plantree_rows_current.json` | Machine-generated from Go repo | projected via `lab/genstructuredgolden` | `v0.3.0-alpha.2` | 2026-07-18 |
+| `golden/dca.signature.txt` | Copied verbatim from Go repo | `plantree/testdata/signature/dca.signature.txt` | `v0.3.0-alpha.2`, peeled tag commit `a92d753cbff4ea95f5ba5b372b44ce50038dc15b` | 2026-07-18 |
 | `wire/` | Generated in this repo (Rust) | derived from `reference/*.yaml` | this repo | 2026-07-08 |
 
 The `v0.2.1` fixture copies under `reference/` and `rendertree/` were verified
@@ -37,9 +38,9 @@ Regenerate from a Go checkout at the same tag using the `lab/genrsgolden`
 harness. Never edit the `.txt` files by hand. Full steps and the filename
 matrix: [`lab/genrsgolden/README.md`](../lab/genrsgolden/README.md).
 
-### Structured Plantree v1 JSON goldens
+### Internal structured Plantree v1alpha2 JSON goldens
 
-The structured JSON is generated locally from the pinned Go v0.3.0-alpha.1 module,
+The structured JSON is generated locally from the pinned Go v0.3.0-alpha.2 module,
 not hand-authored and not derived by parsing ASCII tables:
 
 ```bash
@@ -52,6 +53,16 @@ The generator uses Go `plantree.ProcessPlan` with the reference `CURRENT`
 options and `QueryPlan.IsPredicate` for scalar-link classification. It writes
 the two `*_plantree_rows_current.json` files with deterministic indentation,
 a trailing newline, and `[]` for empty slices.
+
+### Structural signature golden (verbatim copy)
+
+`golden/dca.signature.txt` is a Go-owned alpha artifact. It was copied
+byte-for-byte from `apstndb/spannerplan` commit
+`a92d753cbff4ea95f5ba5b372b44ce50038dc15b` (the peeled `v0.3.0-alpha.2` tag), with SHA-256
+`d0db9898f99e6313ef782d6e8e672db07c1367ac639380064217f01622dfa974`.
+Replace it only by re-copying the corresponding upstream file from a newer
+explicit Go pin and updating this provenance record; never regenerate it from
+the Rust implementation.
 
 ### `wire/` (protobuf `QueryPlan` bytes)
 
