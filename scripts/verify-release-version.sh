@@ -35,7 +35,7 @@ check_version() {
   local actual="$2"
   if [[ "$actual" != "$EXPECTED_VERSION" ]]; then
     echo "error: $label version '$actual' does not match tag '$TAG'" >&2
-    return 1
+    exit 1
   fi
   echo "ok: $label = $actual"
 }
@@ -46,7 +46,9 @@ FOUND_CORE=0
 FOUND_CLI=0
 for manifest in "$ROOT"/js/packages/*/package.json; do
   [[ -f "$manifest" ]] || continue
-  PACKAGE_NAME="$(node -e 'process.stdout.write(require(process.argv[1]).name || "")' "$manifest")"
+  IFS=$'\t' read -r PACKAGE_NAME PACKAGE_VERSION < <(
+    node -p 'const p = require(process.argv[1]); [p.name ?? "", p.version ?? ""].join("\t")' "$manifest"
+  )
   case "$PACKAGE_NAME" in
     @spannerplan/core)
       FOUND_CORE=1
@@ -58,7 +60,6 @@ for manifest in "$ROOT"/js/packages/*/package.json; do
       continue
       ;;
   esac
-  PACKAGE_VERSION="$(node -e 'process.stdout.write(require(process.argv[1]).version || "")' "$manifest")"
   check_version "$PACKAGE_NAME" "$PACKAGE_VERSION"
 done
 

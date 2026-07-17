@@ -223,9 +223,10 @@ cmake --build bindings/cpp/build
 
 ## Verification
 
-The tag workflow first verifies that `vTAG` matches the Cargo workspace version
-and both JavaScript package versions. It then builds, archives, downloads, and
-checksums all release assets and runs the consumer smoke tests. A successful
+The tag workflow first verifies that the version encoded by the tag matches the
+Cargo workspace version and both JavaScript package versions. It then builds,
+archives, downloads, and checksums all release assets and runs the consumer
+smoke tests. A successful
 workflow deliberately leaves a verified **draft** GitHub Release; it never
 publishes the release automatically.
 
