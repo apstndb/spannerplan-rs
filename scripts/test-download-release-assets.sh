@@ -18,7 +18,11 @@ set -euo pipefail
 for argument in "$@"; do
   case "$argument" in
     *'/assets?per_page=100')
-      printf '%s\n' '[{"id":101,"name":"SHA256SUMS.txt"},{"id":102,"name":"spannerplan-core-0.1.0-alpha.2.tgz"}]'
+      if [[ "${MOCK_EXTRA_ASSET:-}" == "1" ]]; then
+        printf '%s\n' '[{"id":101,"name":"SHA256SUMS.txt"},{"id":102,"name":"spannerplan-core-0.1.0-alpha.2.tgz"},{"id":103,"name":"unexpected.tgz"}]'
+      else
+        printf '%s\n' '[{"id":101,"name":"SHA256SUMS.txt"},{"id":102,"name":"spannerplan-core-0.1.0-alpha.2.tgz"}]'
+      fi
       exit 0
       ;;
     */assets/101)
@@ -52,6 +56,15 @@ if PATH="$MOCK_BIN:$PATH" bash "$ROOT/scripts/download-release-assets.sh" \
   --dir "$WORK/missing" \
   missing-asset.tgz >/dev/null 2>&1; then
   echo "error: missing release asset unexpectedly succeeded" >&2
+  exit 1
+fi
+
+if MOCK_EXTRA_ASSET=1 PATH="$MOCK_BIN:$PATH" bash "$ROOT/scripts/download-release-assets.sh" \
+  --repo apstndb/spannerplan-rs \
+  --release-id 355624153 \
+  --dir "$WORK/extra" \
+  SHA256SUMS.txt spannerplan-core-0.1.0-alpha.2.tgz >/dev/null 2>&1; then
+  echo "error: unexpected release asset unexpectedly succeeded" >&2
   exit 1
 fi
 

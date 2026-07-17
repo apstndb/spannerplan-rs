@@ -77,6 +77,19 @@ trap 'rm -f "$ASSET_LIST"' EXIT
 # token for drafts owned by the repository.
 gh api --paginate "repos/${REPO}/releases/${RELEASE_ID}/assets?per_page=100" >"$ASSET_LIST"
 
+expected_asset_names="$(printf '%s\n' "$@" | LC_ALL=C sort)"
+actual_asset_names="$(jq -ers '[ .[][] | .name ] | sort | .[]' "$ASSET_LIST")"
+if [[ "$actual_asset_names" != "$expected_asset_names" ]]; then
+  {
+    echo "error: release asset set differs from the expected set"
+    echo "expected:"
+    printf '%s\n' "$expected_asset_names"
+    echo "actual:"
+    printf '%s\n' "$actual_asset_names"
+  } >&2
+  exit 1
+fi
+
 for asset_name in "$@"; do
   asset_id="$(jq -ers --arg name "$asset_name" '
     [ .[][] | select(.name == $name) ]
