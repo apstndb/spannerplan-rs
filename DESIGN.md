@@ -55,7 +55,7 @@ The Go module is a set of small packages. Port responsibilities map as follows.
 
 | Go package / file | Responsibility | Rust target |
 |---|---|---|
-| root `queryplan.go` | `QueryPlan` type, parent maps, `NodeTitle` formatting, link classification (`IsVisible`/`IsPredicate`/`IsFunction`/`GetLinkType`), formatting options | `spannerplan-core::queryplan` |
+| root `queryplan.go` | `QueryPlan` type, parent maps, `NodeTitle` formatting, link classification (`IsVisible`/`IsPredicate`/`IsFunction`/`LinkTypeInParent`), formatting options | `spannerplan-core::queryplan` |
 | root `extract.go` | Detect input shape (`queryPlan` / `planNodes` / `stats`) and decode | `spannerplan` (std layer) `extract` |
 | external `github.com/apstndb/protoyaml` | YAML→JSON + protojson unmarshal | `spannerplan` (std) `input`; core stays decode-format-agnostic |
 | (new) `proto/` + `build.rs` | Vendored `.proto` subset compiled to `no_std`+`alloc` Rust types via `protox`+`prost-build` (protoc-free) | `spannerplan-core::wire` (feature-gated), see §5.3 |
@@ -936,7 +936,7 @@ JS golden test across the mode × format × print × wrap matrix (§9).
 
 ## 13. Key Go source references (for cross-checking during the port)
 
-- `queryplan.go`: `New`, `IsVisible`, `IsPredicate`, `IsFunction`, `GetLinkType`,
+- `queryplan.go`: `New`, `IsVisible`, `IsPredicate`, `IsFunction`, `LinkTypeInParent`,
   `NodeTitle`, option types + `Parse*`.
 - `treerender/treerender.go`: `Style`, `Row`, `renderTree`, `renderRow`,
   `wrapRowLines`, `wrapChunks`, `hangingIndentPadding`, `prefixLinesFromAncestor`,

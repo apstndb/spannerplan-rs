@@ -190,7 +190,7 @@ For a local run:
 
 ```bash
 go_bin_dir="$(mktemp -d)"
-GOBIN="$go_bin_dir" go install github.com/apstndb/spannerplan/cmd/rendertree@v0.2.1
+GOBIN="$go_bin_dir" go install github.com/apstndb/spannerplan/cmd/rendertree@v0.3.0-alpha.1
 SPANNERPLAN_GO_RENDERTREE="$go_bin_dir/rendertree" cargo test -p spannerplan-cli
 ```
 
