@@ -1,2 +1,9 @@
 language = "C"
 include_guard = "SPANNERPLAN_H"
+after_includes = """
+/*
+ * Prerelease, version-pinned ABI: use this header only with the native
+ * library from the same release archive. ABI compatibility is not promised
+ * between alpha tags.
+ */
+"""

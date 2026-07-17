@@ -1,5 +1,5 @@
 import { parse } from "yaml";
-import { plantreeRows } from "@spannerplan/core/browser";
+import { internalPlantreeRowsV1Alpha2 } from "@spannerplan/core/browser";
 
 const output = document.querySelector("#release-smoke-result");
 
@@ -10,15 +10,18 @@ try {
     return response.text();
   });
   const plan = parse(source);
-  const response = await plantreeRows(plan);
+  const response = await internalPlantreeRowsV1Alpha2(plan);
   if ("error" in response) throw new Error(response.error);
   const predicateLinks = response.rows.flatMap((row) =>
     row.scalarChildLinks.filter((link) => link.isPredicate),
   );
   const expectedRootNodeText = "Distributed Union on AlbumsByAlbumTitle <Row>";
-  if (response.contractVersion !== 1) throw new Error("unexpected contract version");
+  if (response.contractVersion !== 2) throw new Error("unexpected contract version");
   if (response.rows.length === 0) throw new Error("Plantree rows are empty");
   if (response.rows[0].nodeId !== 0) throw new Error("Plantree root nodeId is not 0");
+  if (response.rows[0].rowId !== "0" || response.rows[0].parentRowId !== null) {
+    throw new Error("Plantree root occurrence identity is invalid");
+  }
   if (response.rows[0].nodeText !== expectedRootNodeText) {
     throw new Error(`unexpected Plantree root nodeText: ${response.rows[0].nodeText}`);
   }

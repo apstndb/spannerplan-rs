@@ -21,6 +21,8 @@ Set `SPANNERPLAN_FFI_LIB` to the platform cdylib when auto-detection fails
 Release downloads are versioned target-triple archives; extract the archive
 before setting the variable. Each archive contains the natural library name,
 `spannerplan.h`, and `LICENSE`.
+The C ABI is prerelease and version-pinned: use the header and native library
+from the same archive. ABI compatibility is not promised between alpha tags.
 All FFI bindings also honor `SPANNERPLAN_FFI_DIR` (directory containing the
 platform library). After extracting a Release FFI archive, pass that directory
 explicitly; local compatibility auto-detection may also inspect
@@ -106,7 +108,7 @@ Layer cake and binding overview: [`ARCHITECTURE.md`](../ARCHITECTURE.md).
 | Language | Path | How to run |
 |----------|------|------------|
 | **Rust** | `crates/spannerplan-cli` | `cargo run -p spannerplan-cli -- -mode plan < testdata/reference/dca.yaml` |
-| **Go** | [apstndb/spannerplan `cmd/rendertree`](https://github.com/apstndb/spannerplan/tree/main/cmd/rendertree) | `go install github.com/apstndb/spannerplan/cmd/rendertree@v0.2.1` then `rendertree -mode plan < testdata/reference/dca.yaml` |
+| **Go** | [apstndb/spannerplan `cmd/rendertree`](https://github.com/apstndb/spannerplan/tree/main/cmd/rendertree) | `go install github.com/apstndb/spannerplan/cmd/rendertree@v0.3.0-alpha.1` then `rendertree -mode plan < testdata/reference/dca.yaml` |
 | **Node.js** | `js/packages/cli` | `cd js && npm install && npm run build && npx rendertree -mode plan < ../testdata/reference/dca.yaml` |
 | **Browser** | `js/examples/rendertree-web` | `cd js && npm install && npm run build -w @spannerplan/core && npm run dev -w rendertree-web` |
 | **C++** | `bindings/cpp` | `cmake -S bindings/cpp -B bindings/cpp/build && cmake --build bindings/cpp/build && bindings/cpp/build/rendertree -mode plan < testdata/reference/dca.yaml` |

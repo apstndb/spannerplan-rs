@@ -2,7 +2,7 @@
 
 Gem::Specification.new do |s|
   s.name = 'spannerplan'
-  s.version = '0.1.0.alpha.2'
+  s.version = '0.1.0.alpha.3'
   s.summary = 'Render Cloud Spanner query plans as ASCII tables (FFI-backed)'
   s.description = 'Fiddle wrapper around libspannerplan_ffi from spannerplan-rs.'
   s.authors = ['apstndb']

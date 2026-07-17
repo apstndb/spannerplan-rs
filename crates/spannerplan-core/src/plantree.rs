@@ -6,20 +6,45 @@
 //! there only for source compatibility) are not ported;
 //! [`RowWithPredicates::scalar_child_links`] is their replacement.
 
+use alloc::collections::BTreeSet;
 use alloc::format;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
-use crate::model::{ChildLink, Kind};
+use crate::model::Kind;
 use crate::queryplan::{node_title, NodeTitleOptions, QueryPlan};
 use crate::stats::{self, ExecutionStats, StatsError};
 use crate::treerender::{
     self, compact_style, default_style, ContinuationIndent, RenderOptions, WrapCondition,
 };
 
+/// Conservative first-alpha maximum visible parent-to-child edges in one
+/// rendered Plantree path.
+///
+/// The root has depth zero, so a node at depth 257 is rejected. Keeping this
+/// hard cap in the core protects native and WASM callers from stack exhaustion
+/// on untrusted plans. It may be raised non-breakingly when real captures show
+/// that a higher bound is needed.
+pub const MAX_PLANTREE_DEPTH: usize = 256;
+
+/// Conservative first-alpha maximum visible node occurrences materialized by
+/// one Plantree traversal.
+///
+/// A shared DAG can legitimately repeat a PlanNode below different parents;
+/// this bounds that expansion before it can exhaust a native process or a
+/// browser tab. It may be raised non-breakingly when real captures show that a
+/// higher bound is needed.
+pub const MAX_PLANTREE_OCCURRENCES: usize = 4096;
+
 /// One rendered plan row plus predicate and execution metadata.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct RowWithPredicates {
+    /// Viewer-internal occurrence identity derived from the visible traversal
+    /// path. Unlike `id`, this remains unique when a DAG node is rendered
+    /// through more than one parent link.
+    pub row_id: String,
+    /// The parent occurrence identity, or `None` for the root occurrence.
+    pub parent_row_id: Option<String>,
     /// The Spanner PlanNode index for this row.
     pub id: i32,
     /// Everything rendered before `node_text` on each visual line: the ASCII
@@ -146,6 +171,12 @@ pub enum ProcessPlanError {
     NegativeWrapWidth(i32),
     /// Execution-stat extraction failed.
     Stats(StatsError),
+    /// A relational node was reached twice on the current traversal path.
+    Cycle(i32),
+    /// A visible traversal path exceeded [`MAX_PLANTREE_DEPTH`].
+    DepthLimitExceeded { limit: usize, node_index: i32 },
+    /// Visible DAG expansion exceeded [`MAX_PLANTREE_OCCURRENCES`].
+    OccurrenceLimitExceeded { limit: usize, node_index: i32 },
     /// An internal renderer invariant was violated (mirrors Go's defensive
     /// row-count / line-count consistency errors).
     Internal(&'static str),
@@ -158,6 +189,21 @@ impl core::fmt::Display for ProcessPlanError {
                 write!(f, "wrap width cannot be negative: {w}")
             }
             ProcessPlanError::Stats(e) => write!(f, "failed to extract execution stats: {e}"),
+            ProcessPlanError::Cycle(id) => {
+                write!(f, "cycle detected at PlanNode index {id}")
+            }
+            ProcessPlanError::DepthLimitExceeded { limit, node_index } => {
+                write!(
+                    f,
+                    "plan exceeds the renderer depth budget {limit} at PlanNode index {node_index}"
+                )
+            }
+            ProcessPlanError::OccurrenceLimitExceeded { limit, node_index } => {
+                write!(
+                    f,
+                    "plan exceeds the renderer occurrence budget {limit} at PlanNode index {node_index}"
+                )
+            }
             ProcessPlanError::Internal(msg) => write!(f, "internal invariant violated: {msg}"),
         }
     }
@@ -170,6 +216,8 @@ impl From<StatsError> for ProcessPlanError {
 }
 
 struct RenderedNode {
+    row_id: String,
+    parent_row_id: Option<String>,
     id: i32,
     continuation_anchor: String,
     node_text: String,
@@ -178,6 +226,24 @@ struct RenderedNode {
     execution_stats: ExecutionStats,
     scalar_child_links: Vec<ScalarChildLink>,
     children: Vec<RenderedNode>,
+}
+
+#[derive(Clone, Copy)]
+struct IncomingEdge<'a> {
+    parent: Option<&'a crate::model::PlanNode>,
+    raw_child_link_index: Option<usize>,
+}
+
+struct OccurrencePosition {
+    row_id: String,
+    parent_row_id: Option<String>,
+    depth: usize,
+}
+
+#[derive(Default)]
+struct TraversalState {
+    ancestors: BTreeSet<i32>,
+    occurrences: usize,
 }
 
 /// Converts a query plan into rendered tree rows with predicate and
@@ -196,7 +262,22 @@ pub fn process_plan(
         title_opts.compact = true;
     }
 
-    let Some(root) = build_rendered_tree(qp, None, opts, &title_opts)? else {
+    let Some(root) = build_rendered_tree(
+        qp,
+        IncomingEdge {
+            parent: None,
+            raw_child_link_index: None,
+        },
+        OccurrencePosition {
+            row_id: "0".to_string(),
+            parent_row_id: None,
+            depth: 0,
+        },
+        opts,
+        &title_opts,
+        &mut TraversalState::default(),
+    )?
+    else {
         return Ok(Vec::new());
     };
 
@@ -243,6 +324,8 @@ pub fn process_plan(
             ));
         }
         result.push(RowWithPredicates {
+            row_id: node.row_id,
+            parent_row_id: node.parent_row_id,
             id: node.id,
             tree_part: row.tree_part,
             node_text: row.node_text,
@@ -257,10 +340,18 @@ pub fn process_plan(
 
 fn build_rendered_tree(
     qp: &QueryPlan,
-    link: Option<&ChildLink>,
+    incoming: IncomingEdge<'_>,
+    occurrence: OccurrencePosition,
     opts: &ProcessPlanOptions,
     title_opts: &NodeTitleOptions,
+    state: &mut TraversalState,
 ) -> Result<Option<RenderedNode>, ProcessPlanError> {
+    let link = match (incoming.parent, incoming.raw_child_link_index) {
+        (Some(parent), Some(index)) => Some(&parent.get_child_links()[index]),
+        (None, None) => None,
+        // This is internal call-site state, not malformed user input.
+        _ => return Err(ProcessPlanError::Internal("incomplete incoming edge")),
+    };
     if !qp.is_visible(link) {
         return Ok(None);
     }
@@ -268,7 +359,29 @@ fn build_rendered_tree(
     let sep = if opts.compact { "" } else { " " };
 
     let node = qp.get_node_by_child_link(link);
-    let link_type = qp.get_link_type(link);
+    let node_index = node.get_index();
+    if state.ancestors.contains(&node_index) {
+        return Err(ProcessPlanError::Cycle(node_index));
+    }
+    if occurrence.depth > MAX_PLANTREE_DEPTH {
+        return Err(ProcessPlanError::DepthLimitExceeded {
+            limit: MAX_PLANTREE_DEPTH,
+            node_index,
+        });
+    }
+    if state.occurrences == MAX_PLANTREE_OCCURRENCES {
+        return Err(ProcessPlanError::OccurrenceLimitExceeded {
+            limit: MAX_PLANTREE_OCCURRENCES,
+            node_index,
+        });
+    }
+    state.ancestors.insert(node_index);
+    state.occurrences += 1;
+    let link_type = match (incoming.parent, incoming.raw_child_link_index) {
+        (Some(parent), Some(index)) => qp.link_type_in_parent(parent, index),
+        (None, None) => "",
+        _ => unreachable!("incoming edge was checked above"),
+    };
     let continuation_anchor = if link_type.is_empty() {
         String::new()
     } else {
@@ -308,13 +421,37 @@ fn build_rendered_tree(
     let execution_stats = stats::extract(node, opts.disallow_unknown_stats)?;
 
     let mut children = Vec::new();
-    for child_link in qp.visible_child_links(node) {
-        if let Some(rendered) = build_rendered_tree(qp, Some(child_link), opts, title_opts)? {
+    let mut visible_child_index = 0;
+    for (raw_child_link_index, child_link) in node.get_child_links().iter().enumerate() {
+        if !qp.is_visible(Some(child_link)) {
+            continue;
+        }
+        let child_row_id = format!("{}.{visible_child_index}", occurrence.row_id);
+        visible_child_index += 1;
+        if let Some(rendered) = build_rendered_tree(
+            qp,
+            IncomingEdge {
+                parent: Some(node),
+                raw_child_link_index: Some(raw_child_link_index),
+            },
+            OccurrencePosition {
+                row_id: child_row_id,
+                parent_row_id: Some(occurrence.row_id.clone()),
+                depth: occurrence.depth + 1,
+            },
+            opts,
+            title_opts,
+            state,
+        )? {
             children.push(rendered);
         }
     }
 
+    state.ancestors.remove(&node_index);
+
     Ok(Some(RenderedNode {
+        row_id: occurrence.row_id,
+        parent_row_id: occurrence.parent_row_id,
         id: node.get_index(),
         continuation_anchor,
         node_text,
@@ -337,7 +474,7 @@ fn flatten_preorder(mut node: RenderedNode, out: &mut Vec<RenderedNode>) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::{Metadata, MetadataValue, PlanNode, ShortRepresentation};
+    use crate::model::{ChildLink, Metadata, MetadataValue, PlanNode, ShortRepresentation};
     use alloc::vec;
 
     fn relational(index: i32, display_name: &str, child_links: Vec<ChildLink>) -> PlanNode {
@@ -413,6 +550,183 @@ mod tests {
         let err =
             process_plan(&qp, &ProcessPlanOptions::default().with_wrap_width(-1)).unwrap_err();
         assert_eq!(err, ProcessPlanError::NegativeWrapWidth(-1));
+    }
+
+    #[test]
+    fn occurrence_ids_distinguish_a_shared_visible_node() {
+        let qp = QueryPlan::new(vec![
+            relational(0, "Root", vec![link(1, ""), link(2, "")]),
+            relational(1, "Left", vec![link(3, "")]),
+            relational(2, "Right", vec![link(3, "")]),
+            relational(3, "Shared", vec![]),
+        ])
+        .unwrap();
+
+        let rows = process_plan(&qp, &ProcessPlanOptions::default()).unwrap();
+        let identities: Vec<_> = rows
+            .iter()
+            .map(|row| (row.id, row.row_id.as_str(), row.parent_row_id.as_deref()))
+            .collect();
+
+        assert_eq!(
+            identities,
+            vec![
+                (0, "0", None),
+                (1, "0.0", Some("0")),
+                (3, "0.0.0", Some("0.0")),
+                (2, "0.1", Some("0")),
+                (3, "0.1.0", Some("0.1")),
+            ]
+        );
+    }
+
+    #[test]
+    fn shared_occurrences_use_the_actual_parent_edge_for_implicit_input() {
+        for (apply_at_first_child, expected) in [
+            (true, vec!["[Input] Shared", "Shared"]),
+            (false, vec!["Shared", "[Input] Shared"]),
+        ] {
+            let first_parent = if apply_at_first_child {
+                "Cross Apply"
+            } else {
+                "Other"
+            };
+            let second_parent = if apply_at_first_child {
+                "Other"
+            } else {
+                "Cross Apply"
+            };
+            let qp = QueryPlan::new(vec![
+                relational(0, "Root", vec![link(1, ""), link(2, "")]),
+                relational(1, first_parent, vec![link(3, "")]),
+                relational(2, second_parent, vec![link(3, "")]),
+                relational(3, "Shared", vec![]),
+            ])
+            .unwrap();
+
+            let rows = process_plan(&qp, &ProcessPlanOptions::default()).unwrap();
+            assert_eq!(
+                rows.iter()
+                    .filter(|row| row.id == 3)
+                    .map(|row| row.node_text.as_str())
+                    .collect::<Vec<_>>(),
+                expected,
+                "apply_at_first_child={apply_at_first_child}",
+            );
+        }
+    }
+
+    #[test]
+    fn only_the_first_actual_child_link_of_apply_is_implicit_input() {
+        let qp = QueryPlan::new(vec![
+            relational(0, "Cross Apply", vec![link(1, ""), link(1, "")]),
+            relational(1, "Shared", vec![]),
+        ])
+        .unwrap();
+
+        let rows = process_plan(&qp, &ProcessPlanOptions::default()).unwrap();
+        assert_eq!(
+            rows.iter()
+                .filter(|row| row.id == 1)
+                .map(|row| (row.row_id.as_str(), row.node_text.as_str()))
+                .collect::<Vec<_>>(),
+            vec![("0.0", "[Input] Shared"), ("0.1", "Shared")],
+        );
+    }
+
+    #[test]
+    fn relational_cycle_is_rejected_without_deduplicating_a_dag() {
+        let qp = QueryPlan::new(vec![
+            relational(0, "Root", vec![link(1, "")]),
+            relational(1, "Child", vec![link(0, "")]),
+        ])
+        .unwrap();
+
+        let err = process_plan(&qp, &ProcessPlanOptions::default()).unwrap_err();
+        assert_eq!(err, ProcessPlanError::Cycle(0));
+    }
+
+    #[test]
+    fn cycle_is_checked_before_occurrence_budget() {
+        let mut root_links = vec![link(1, ""); MAX_PLANTREE_OCCURRENCES];
+        root_links[MAX_PLANTREE_OCCURRENCES - 1] = link(0, "");
+        let qp = QueryPlan::new(vec![
+            relational(0, "Root", root_links),
+            relational(1, "Shared", vec![]),
+        ])
+        .unwrap();
+
+        let err = process_plan(&qp, &ProcessPlanOptions::default()).unwrap_err();
+        assert_eq!(err, ProcessPlanError::Cycle(0));
+    }
+
+    #[test]
+    fn depth_limit_rejects_depth_257() {
+        let nodes = (0..=MAX_PLANTREE_DEPTH + 1)
+            .map(|index| {
+                relational(
+                    index as i32,
+                    "Chain",
+                    if index == MAX_PLANTREE_DEPTH + 1 {
+                        vec![]
+                    } else {
+                        vec![link(index as i32 + 1, "")]
+                    },
+                )
+            })
+            .collect();
+        let qp = QueryPlan::new(nodes).unwrap();
+
+        let err = std::thread::Builder::new()
+            .name("plantree-depth-limit".to_string())
+            .stack_size(8 * 1024 * 1024)
+            .spawn(move || process_plan(&qp, &ProcessPlanOptions::default()).unwrap_err())
+            .unwrap()
+            .join()
+            .unwrap();
+
+        assert_eq!(
+            err,
+            ProcessPlanError::DepthLimitExceeded {
+                limit: MAX_PLANTREE_DEPTH,
+                node_index: (MAX_PLANTREE_DEPTH + 1) as i32,
+            }
+        );
+        assert_eq!(
+            err.to_string(),
+            "plan exceeds the renderer depth budget 256 at PlanNode index 257"
+        );
+    }
+
+    #[test]
+    fn occurrence_limit_rejects_shared_dag_expansion() {
+        let branch_count: i32 = 12;
+        let mut nodes = Vec::with_capacity(branch_count as usize + 1);
+        for index in 0..=branch_count {
+            nodes.push(relational(
+                index,
+                "Branch",
+                if index == branch_count {
+                    vec![]
+                } else {
+                    vec![link(index + 1, ""), link(index + 1, "")]
+                },
+            ));
+        }
+        let qp = QueryPlan::new(nodes).unwrap();
+
+        let err = process_plan(&qp, &ProcessPlanOptions::default()).unwrap_err();
+        assert_eq!(
+            err,
+            ProcessPlanError::OccurrenceLimitExceeded {
+                limit: MAX_PLANTREE_OCCURRENCES,
+                node_index: 1,
+            }
+        );
+        assert_eq!(
+            err.to_string(),
+            "plan exceeds the renderer occurrence budget 4096 at PlanNode index 1"
+        );
     }
 
     #[test]

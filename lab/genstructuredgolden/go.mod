@@ -4,12 +4,12 @@ go 1.25.0
 
 require (
 	cloud.google.com/go/spanner v1.90.0
-	github.com/apstndb/spannerplan v0.2.1
+	github.com/apstndb/spannerplan v0.3.0-alpha.1
 )
 
 require (
 	github.com/apstndb/go-tabwrap v0.1.3 // indirect
-	github.com/apstndb/protoyaml v0.1.0 // indirect
+	github.com/apstndb/protoyaml v0.1.1 // indirect
 	github.com/clipperhouse/displaywidth v0.11.0 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/goccy/go-yaml v1.17.1 // indirect

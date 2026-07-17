@@ -36,10 +36,13 @@ jobs:
           go-version: stable
 
       - name: Install Go rendertree @latest (parity target)
-        run: go install github.com/apstndb/spannerplan/cmd/rendertree@latest
+        run: |
+          mkdir -p "$RUNNER_TEMP/spannerplan-go-bin"
+          GOBIN="$RUNNER_TEMP/spannerplan-go-bin" go install github.com/apstndb/spannerplan/cmd/rendertree@latest
+          echo "SPANNERPLAN_GO_RENDERTREE=$RUNNER_TEMP/spannerplan-go-bin/rendertree" >> "$GITHUB_ENV"
 
       - name: Record installed rendertree version
-        run: go version -m "$(command -v rendertree)" | grep -E '^\s+mod\s' | tee rendertree-version.txt
+        run: go version -m "$SPANNERPLAN_GO_RENDERTREE" | grep -E '^\s+mod\s' | tee rendertree-version.txt
 
       - name: Run parity tests against spannerplan@latest
         id: parity

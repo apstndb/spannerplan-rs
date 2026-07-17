@@ -29,7 +29,7 @@ references below are relative to that repo.
    requirement. No filesystem, no I/O, no `std::collections` that require `std`
    (use `alloc::collections`), no panics on untrusted input where avoidable.
 3. **Usable as a library** from Rust with an ergonomic typed API.
-4. **Bindable from other languages**: a stable C ABI (`cdylib`) that takes either
+4. **Bindable from other languages**: a prerelease C ABI (`cdylib`) that takes either
    JSON text or raw protobuf wire bytes in and returns rendered text out (see
    §8.1), plus a WASM entry point mirroring the Go `examples/wasm/render` wrapper.
 5. Ship an equivalent of the `rendertree` CLI.
@@ -55,9 +55,9 @@ The Go module is a set of small packages. Port responsibilities map as follows.
 
 | Go package / file | Responsibility | Rust target |
 |---|---|---|
-| root `queryplan.go` | `QueryPlan` type, parent maps, `NodeTitle` formatting, link classification (`IsVisible`/`IsPredicate`/`IsFunction`/`GetLinkType`), formatting options | `spannerplan-core::queryplan` |
+| root `queryplan.go` | `QueryPlan` type, parent maps, `NodeTitle` formatting, link classification (`IsVisible`/`IsPredicate`/`IsFunction`/`LinkTypeInParent`), formatting options | `spannerplan-core::queryplan` |
 | root `extract.go` | Detect input shape (`queryPlan` / `planNodes` / `stats`) and decode | `spannerplan` (std layer) `extract` |
-| `protoyaml/` | YAML→JSON + protojson unmarshal | `spannerplan` (std) `input`; core stays decode-format-agnostic |
+| external `github.com/apstndb/protoyaml` | YAML→JSON + protojson unmarshal | `spannerplan` (std) `input`; core stays decode-format-agnostic |
 | (new) `proto/` + `build.rs` | Vendored `.proto` subset compiled to `no_std`+`alloc` Rust types via `protox`+`prost-build` (protoc-free) | `spannerplan-core::wire` (feature-gated), see §5.3 |
 | `plantree/plantree.go` | `ProcessPlan`: builds the visible operator tree, computes predicates, scalar child links, per-row execution stats, then calls the tree renderer to get `TreePart`/`NodeText` | `spannerplan-core::plantree` |
 | `treerender/treerender.go` | Generic ASCII tree renderer with wrapping / hanging-indent | `spannerplan-core::treerender` |
@@ -157,8 +157,8 @@ diffs. See §6.2 and §6.7.
 ## 5. Input format and data model
 
 ### 5.1 Three decode paths, one internal model
-The Go tool only ever sees **protojson** (`protojson.Unmarshal` in
-`protoyaml/protoyaml.go`), because the CLI reads YAML/JSON files. A Rust library
+The Go tool only ever sees **protojson** (through the external
+`github.com/apstndb/protoyaml` module), because the CLI reads YAML/JSON files. A Rust library
 has a wider set of realistic callers, so this port supports three ways to get a
 `spannerplan_core::model::PlanNode` tree, all converging on the same internal
 model so `queryplan.rs`/`plantree.rs`/etc. are decode-path-agnostic:
@@ -362,16 +362,18 @@ root), `get_parent_node_by_child_index/link`, `parent_links` (clone),
   - if `link.type == "Search Predicate"` → true iff child kind == Scalar;
   - else if not `is_function` → false;
   - else true iff `link.type` ends with `"Condition"` OR `== "Split Range"`.
-- `get_link_type(link)`: if `link.type != ""` return it; else if parent
-  `display_name` ends with `"Apply"` AND this link is the parent's **first** child
-  link (by child_index) → return `"Input"`; else `""`. (Apply-input workaround.)
+- `link_type_in_parent(parent, raw_child_link_index)`: if that edge has an
+  explicit type, return it; otherwise, if `parent.display_name` ends with
+  `"Apply"` and `raw_child_link_index == 0`, return `"Input"`; else `""`.
+  Keeping the original child-link position makes the Apply-input workaround
+  unambiguous for a shared DAG child.
 
 ### 6.2 `queryplan.rs` — `NodeTitle` (most detail-sensitive function)
 Direct port of `queryplan.go` `NodeTitle`. Options struct:
 ```
 ExecutionMethodFormat { Raw(0), Angle(1) }   // parse RAW|ANGLE
 TargetMetadataFormat   { Raw(0), On(1) }      // parse RAW|ON
-KnownFlagFormat        { Raw(0), Label(1) }   // parse RAW|LABEL (FullScanFormat = alias)
+KnownFlagFormat        { Raw(0), Label(1) }   // parse RAW|LABEL
 compact: bool
 hide_metadata: bool
 inline_stats_fn: Option<fn(&PlanNode)->Vec<String>>
@@ -572,7 +574,8 @@ sets compact style + compact NodeTitle + compact treerender style. Validate:
 - if `!qp.is_visible(link)` → None.
 - `sep = if !compact {" "} else {""}`.
 - `node = qp.get_node_by_child_link(link)`; guard index >= 0.
-- `link_type = qp.get_link_type(link)`;
+- `link_type = qp.link_type_in_parent(parent, raw_child_link_index)` for a
+  child occurrence (the root has no incoming link type);
   `continuation_anchor = if link_type!="" {"["+link_type+"]"+sep} else {""}`.
 - `node_text = continuation_anchor + NodeTitle(node, queryplan_options)`.
 - `predicates`: for each child link `cl` of node where `qp.is_predicate(cl)`:
@@ -728,18 +731,20 @@ Port `plantree/reference/reference.go`.
 Print presets/sections wrappers mirror `plantree/reference/appendix.go`
 (`PrintSection`, `PrintPreset`, `NewPrintSections`, `ParsePrint*`).
 
-### 6.10 Structured Plantree rows
+### 6.10 Bundled viewer Plantree rows
 
 `plantree_rows(plan_nodes, format, PlantreeConfig)` returns the `ProcessPlan`
 pre-order rows without rendering a table or scalar appendix. Its narrow config
 contains only `wrap_width`, `hanging_indent`, and `disallow_unknown_stats`.
-WASM projects the core rows to the versioned v1 envelope described by
-[`schema/plantree-rows-v1.schema.json`](schema/plantree-rows-v1.schema.json):
-`{contractVersion: 1, rows}` or `{error}`. Each scalar child link carries raw
-link fields plus an `isPredicate` classification from `QueryPlan::is_predicate`;
-never infer that flag from `node_text` or formatted table output. Execution
-statistics, render mode, occurrence IDs, and formatted `operator` text are
-outside this contract.
+WASM projects the core rows to the viewer-internal v1alpha2 envelope described
+by [`schema/plantree-rows-v1alpha2.internal.schema.json`](schema/plantree-rows-v1alpha2.internal.schema.json):
+`{contractVersion: 2, rows}` or `{error}`. `rowId` is a visible child-position
+path (`0`, `0.0`, ...), and `parentRowId` is nullable for the root; `nodeId`
+remains the Spanner PlanNode identity and can repeat. Each scalar child link
+carries raw link fields plus an `isPredicate` classification from
+`QueryPlan::is_predicate`; never infer structure from formatted text. This is a
+checksum-pinned bundled boundary, not an external API, and may change in any
+prerelease without a deprecation window.
 
 ---
 
@@ -802,13 +807,14 @@ the `spannerplan` std crate) into the shared internal model, call
 `reference::render_tree_table_with_config`, marshal `Result` into the out-param +
 `CString`. Catch panics at the boundary (`std::panic::catch_unwind`) and convert
 to an error string. Provide a C header (`cbindgen`) and a `.def`/version script if
-targeting stable symbols.
+targeting long-lived symbols. Until a separately authorized stable release,
+all binding symbols remain prerelease and may change between alphas.
 
 `config_json` stays JSON on both entry points — it's small, human-authored,
 config-shaped data (equivalent to the CLI flags), not a hot path, so the
 serialization cost is negligible even on the wire entry point. If a caller wants
 to avoid JSON entirely for config too, expose builder-style setter functions as
-an alternative later; not needed for v1.
+an alternative later; not needed for the current alpha.
 
 Design note: keep the surface tiny so every language binds trivially
 (Python/ctypes, Node/ffi-napi, Ruby/Fiddle, etc.). Richer typed FFI can come later.
@@ -821,7 +827,7 @@ Mirror `examples/wasm/render`: export
 
 Optionally also export a `Uint8Array`-accepting variant backed by the wire path
 (§5.3/§8.1) for JS hosts that already have protobuf bytes (e.g. from a gRPC-Web
-client) and want to skip a JSON round trip. Not required for v1 — add once the
+client) and want to skip a JSON round trip. Not required for the current alpha — add once the
 JSON path is validated against the Go goldens.
 
 ---
@@ -897,8 +903,8 @@ std layer (`spannerplan`):
 
 CLI (`spannerplan-cli`):
 - `clap` (derive) for the flag surface (see §11), or hand-rolled to match Go's
-  `flag` semantics precisely. Given deprecated aliases and mutual-exclusion rules,
-  `clap` with manual post-validation is fine.
+  `flag` semantics precisely. Manual post-validation keeps mutual-exclusion
+  behavior aligned with Go.
 
 FFI: `libc` (optional), `cbindgen` (build/dev). WASM: `wasm-bindgen` (for JS build).
 
@@ -911,10 +917,9 @@ Avoid pulling `regex` into core (§6.8 uses a hand-written scanner).
 Port the flags from `cmd/rendertree/impl/impl.go` (`run`):
 `--mode` (AUTO), `--print` (basic), `--show-vars`, `--resolve-vars`,
 `--resolve-vars-recursive`, `--disallow-unknown-stats`, `--execution-method`
-(angle), `--target-metadata` (on), `--known-flag` (label), `--full-scan`
-(deprecated alias → known-flag; mutually exclusive), `--compact`, `--inline-stats`,
+(angle), `--target-metadata` (on), `--known-flag` (label), `--compact`, `--inline-stats`,
 `--wrap-width` (0), `--hanging-indent`, and the custom-column family
-(`--custom`, `--custom-column`, `--custom-file` — defer, see non-goals).
+(`--custom-column`, `--custom-file` — defer, see non-goals).
 Behavior: read stdin (YAML or JSON), `ExtractQueryPlan`, build `QueryPlan`, render.
 Exit code 2 on usage errors (matches Go `usageError`).
 
@@ -922,8 +927,8 @@ Exit code 2 on usage errors (matches Go `usageError`).
 
 ## 12. Deferred features
 
-Custom columns (`--custom` family), inline-stats, and direct struct interop with
-a specific Spanner client crate remain out of scope for v1 (see non-goals in §1).
+Custom columns (`--custom-column` / `--custom-file`), inline-stats, and direct struct interop with
+a specific Spanner client crate remain out of scope for the current alpha (see non-goals in §1).
 Parity is measured by Go-derived goldens, CLI diffs, wire-vs-JSON tests, and the
 JS golden test across the mode × format × print × wrap matrix (§9).
 
@@ -931,7 +936,7 @@ JS golden test across the mode × format × print × wrap matrix (§9).
 
 ## 13. Key Go source references (for cross-checking during the port)
 
-- `queryplan.go`: `New`, `IsVisible`, `IsPredicate`, `IsFunction`, `GetLinkType`,
+- `queryplan.go`: `New`, `IsVisible`, `IsPredicate`, `IsFunction`, `LinkTypeInParent`,
   `NodeTitle`, option types + `Parse*`.
 - `treerender/treerender.go`: `Style`, `Row`, `renderTree`, `renderRow`,
   `wrapRowLines`, `wrapChunks`, `hangingIndentPadding`, `prefixLinesFromAncestor`,
@@ -944,7 +949,7 @@ JS golden test across the mode × format × print × wrap matrix (§9).
   `scalarLinkLines`, resolver, `normalizeKeyOrderSuffix`, include predicates.
 - `plantree/reference/reference.go` + `appendix.go`: high-level API.
 - `cmd/rendertree/impl/impl.go`: CLI behavior + strings.
-- `extract.go`, `protoyaml/protoyaml.go`: input detection + YAML/JSON handling.
+- `extract.go`, external `github.com/apstndb/protoyaml`: input detection + YAML/JSON handling.
 - `plantree/reference/reference_test.go`: authoritative golden outputs.
 
 ---

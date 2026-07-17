@@ -8,15 +8,19 @@ Shared JSON Schema for cross-surface configuration. Today this is
 |------|------|
 | [`render-config.schema.json`](render-config.schema.json) | JSON Schema (camelCase fields) |
 | [`render-config.example.json`](render-config.example.json) | Example document |
-| [`plantree-rows-v1.schema.json`](plantree-rows-v1.schema.json) | Versioned structured Plantree WASM response |
+| [`plantree-rows-v1alpha2.internal.schema.json`](plantree-rows-v1alpha2.internal.schema.json) | Bundled viewer Plantree response, wire revision 2 |
 
 Consumers: Rust (`serde`), C FFI (`config_json`), WASM, `@spannerplan/core`,
 and language bindings. Omitted fields use Rust defaults. See
 [`ARCHITECTURE.md`](../ARCHITECTURE.md) (Reference API vs CLI path) and
 [`DESIGN.md`](../DESIGN.md) §6.9 / §8.
 
-`plantree-rows-v1.schema.json` instead describes output, not configuration.
-It is the stable response union for `spannerplanPlantreeRows`: either
-`{contractVersion: 1, rows}` or `{error}`. It intentionally contains raw row
-structure rather than a formatted table, render mode, execution statistics, or
-occurrence IDs.
+`plantree-rows-v1alpha2.internal.schema.json` describes output, not
+configuration. It is an internal contract between a checksum-pinned viewer and
+its bundled renderer, not a stable external API. Success is
+`{contractVersion: 2, rows}`; each row carries occurrence identity independent
+of the Spanner `nodeId`. The schema is a strict writer specification: its
+`additionalProperties: false` rules describe exactly what this bundled renderer
+emits. The TypeScript runtime parser is intentionally a forward reader: it
+validates the required revision-2 fields and ignores unknown additive fields so
+a co-pinned viewer can tolerate a newer renderer during controlled rollout.

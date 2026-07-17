@@ -223,11 +223,12 @@ pub fn render_tree_table_with_config(
     Ok(format!("{table_part}{appendix_part}"))
 }
 
-/// Converts plan nodes to structured Plantree rows for the given format.
+/// Converts plan nodes to structured Plantree rows for the bundled viewer.
 ///
 /// Unlike [`render_tree_table_with_config`], this entry point has no table
-/// render mode or scalar-appendix configuration. It is the stable high-level
-/// contract for consumers that need row structure instead of final text.
+/// render mode or scalar-appendix configuration. It supports the co-pinned
+/// WASM projection and does not carry an external compatibility promise.
+#[doc(hidden)]
 pub fn plantree_rows(
     plan_nodes: &[PlanNode],
     format: Format,

@@ -5,17 +5,17 @@ import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 
 import {
+  internalPlantreeRowsV1Alpha2,
+  internalPlantreeRowsV1Alpha2OrThrow,
+  internalPlantreeRowsV1Alpha2Wire,
+  isInternalPlantreeRowsErrorV1Alpha2,
   isRenderError,
-  isPlantreeRowsError,
-  plantreeRows,
-  plantreeRowsOrThrow,
-  plantreeRowsWire,
   renderRendertree,
   renderTreeTable,
   renderTreeTableWire,
 } from "../src/index.js";
 import { parsePlanText } from "../src/input-browser.js";
-import { parsePlantreeRowsResponse } from "../src/plantree.js";
+import { parseInternalPlantreeRowsResponseV1Alpha2 } from "../src/plantree.js";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "../../../..");
 
@@ -88,7 +88,7 @@ describe("wire renderer", () => {
   });
 });
 
-describe("structured Plantree rows", () => {
+describe("viewer-internal Plantree v1alpha2 rows", () => {
   it("rejects malformed runtime response DTOs", () => {
     const valid = structuredGolden("dca_plantree_rows_current") as {
       contractVersion: number;
@@ -97,24 +97,24 @@ describe("structured Plantree rows", () => {
     const firstRow = valid.rows[0] as Record<string, unknown>;
     const firstLink = (firstRow.scalarChildLinks as unknown[])[0] as Record<string, unknown>;
 
-    expect(parsePlantreeRowsResponse({ rows: [] })).toEqual({
+    expect(parseInternalPlantreeRowsResponseV1Alpha2({ rows: [] })).toEqual({
       error: "unsupported WASM Plantree contract version",
     });
-    expect(parsePlantreeRowsResponse({ contractVersion: 2, rows: [] })).toEqual({
+    expect(parseInternalPlantreeRowsResponseV1Alpha2({ contractVersion: 1, rows: [] })).toEqual({
       error: "unsupported WASM Plantree contract version",
     });
-    expect(parsePlantreeRowsResponse({ contractVersion: 1 })).toEqual({
+    expect(parseInternalPlantreeRowsResponseV1Alpha2({ contractVersion: 2 })).toEqual({
       error: "unexpected WASM Plantree rows response",
     });
     expect(
-      parsePlantreeRowsResponse({
-        contractVersion: 1,
+      parseInternalPlantreeRowsResponseV1Alpha2({
+        contractVersion: 2,
         rows: [{ ...firstRow, nodeId: "not-a-number" }],
       }),
     ).toEqual({ error: "unexpected WASM Plantree row response" });
     expect(
-      parsePlantreeRowsResponse({
-        contractVersion: 1,
+      parseInternalPlantreeRowsResponseV1Alpha2({
+        contractVersion: 2,
         rows: [
           {
             ...firstRow,
@@ -123,12 +123,12 @@ describe("structured Plantree rows", () => {
         ],
       }),
     ).toEqual({ error: "unexpected WASM Plantree row response" });
-    expect(parsePlantreeRowsResponse({ error: 42 })).toEqual({
+    expect(parseInternalPlantreeRowsResponseV1Alpha2({ error: 42 })).toEqual({
       error: "unexpected WASM Plantree error response",
     });
 
-    const projected = parsePlantreeRowsResponse({
-      contractVersion: 1,
+    const projected = parseInternalPlantreeRowsResponseV1Alpha2({
+      contractVersion: 2,
       rows: [
         {
           ...firstRow,
@@ -138,9 +138,11 @@ describe("structured Plantree rows", () => {
       ],
     });
     expect(projected).toEqual({
-      contractVersion: 1,
+      contractVersion: 2,
       rows: [
         {
+          rowId: firstRow.rowId,
+          parentRowId: firstRow.parentRowId,
           nodeId: firstRow.nodeId,
           treePart: firstRow.treePart,
           nodeText: firstRow.nodeText,
@@ -169,9 +171,9 @@ describe("structured Plantree rows", () => {
     ],
   ] as const) {
     it(`matches the Go-derived ${goldenName} projection`, () => {
-      const response = plantreeRows(fixture(fixturePath));
-      expect(isPlantreeRowsError(response)).toBe(false);
-      if (!isPlantreeRowsError(response)) {
+      const response = internalPlantreeRowsV1Alpha2(fixture(fixturePath));
+      expect(isInternalPlantreeRowsErrorV1Alpha2(response)).toBe(false);
+      if (!isInternalPlantreeRowsErrorV1Alpha2(response)) {
         expect(response).toEqual(structuredGolden(goldenName));
       }
     });
@@ -180,28 +182,28 @@ describe("structured Plantree rows", () => {
   it("accepts YAML text and JSON objects equivalently", () => {
     const yaml = fixture("reference/dca.yaml");
     const json = parse(yaml) as Record<string, unknown>;
-    expect(plantreeRows(json)).toEqual(plantreeRows(yaml));
+    expect(internalPlantreeRowsV1Alpha2(json)).toEqual(internalPlantreeRowsV1Alpha2(yaml));
   });
 
   it("matches the wire projection", () => {
     const yaml = fixture("reference/dca.yaml");
     const wire = wireFixture("dca");
-    expect(plantreeRowsWire(wire)).toEqual(plantreeRows(yaml));
+    expect(internalPlantreeRowsV1Alpha2Wire(wire)).toEqual(internalPlantreeRowsV1Alpha2(yaml));
   });
 
   it("returns the error envelope for an invalid format", () => {
-    const response = plantreeRows(fixture("reference/dca.yaml"), "bad-format" as never);
+    const response = internalPlantreeRowsV1Alpha2(fixture("reference/dca.yaml"), "bad-format" as never);
     expect(response).toEqual({ error: "unknown format: bad-format" });
   });
 
   it("rejects the error envelope through the throwing helper", async () => {
     await expect(
-      plantreeRowsOrThrow(fixture("reference/dca.yaml"), "bad-format" as never),
+      internalPlantreeRowsV1Alpha2OrThrow(fixture("reference/dca.yaml"), "bad-format" as never),
     ).rejects.toThrow("unknown format: bad-format");
   });
 
   it("keeps predicate classification on scalar child links", async () => {
-    const rows = await plantreeRowsOrThrow(fixture("reference/dca.yaml"));
+    const rows = await internalPlantreeRowsV1Alpha2OrThrow(fixture("reference/dca.yaml"));
     const predicateLinks = rows.flatMap((row) =>
       row.scalarChildLinks.filter((link) => link.isPredicate),
     );

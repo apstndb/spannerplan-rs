@@ -6,15 +6,15 @@ golden mapping.
 
 Upstream reference implementation:
 [`github.com/apstndb/spannerplan`](https://github.com/apstndb/spannerplan)
-(Apache-2.0). The pinned version tracks the Go CLI parity pin in
-[`.github/workflows/ci.yml`](../.github/workflows/ci.yml).
+(Apache-2.0). Generated projections record their Go parity version; verbatim
+fixture copies retain the tag from which their source bytes were copied.
 
 | Directory | Origin | Upstream path | Ref / version | Last synced |
 |-----------|--------|---------------|---------------|-------------|
 | `reference/` | Copied verbatim from Go repo | `plantree/reference/testdata/` | `v0.2.1` | 2026-07-08 |
 | `rendertree/` | Copied verbatim from Go repo | `cmd/rendertree/impl/testdata/` | `v0.2.1` | 2026-07-08 |
 | `golden/` | Machine-generated from Go repo | rendered via `lab/genrsgolden` | `v0.2.1` | 2026-07-08 |
-| `golden/*_plantree_rows_current.json` | Machine-generated from Go repo | projected via `lab/genstructuredgolden` | `v0.2.1` | 2026-07-17 |
+| `golden/*_plantree_rows_current.json` | Machine-generated from Go repo | projected via `lab/genstructuredgolden` | `v0.3.0-alpha.1` | 2026-07-18 |
 | `wire/` | Generated in this repo (Rust) | derived from `reference/*.yaml` | this repo | 2026-07-08 |
 
 The `v0.2.1` fixture copies under `reference/` and `rendertree/` were verified
@@ -39,7 +39,7 @@ matrix: [`lab/genrsgolden/README.md`](../lab/genrsgolden/README.md).
 
 ### Structured Plantree v1 JSON goldens
 
-The structured JSON is generated locally from the pinned Go v0.2.1 module,
+The structured JSON is generated locally from the pinned Go v0.3.0-alpha.1 module,
 not hand-authored and not derived by parsing ASCII tables:
 
 ```bash

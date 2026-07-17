@@ -5,6 +5,12 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
+/*
+ * Prerelease, version-pinned ABI: use this header only with the native
+ * library from the same release archive. ABI compatibility is not promised
+ * between alpha tags.
+ */
+
 
 /**
  * Renders a query plan from protobuf wire bytes.
