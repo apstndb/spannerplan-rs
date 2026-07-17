@@ -10,9 +10,13 @@ Depends on [`@spannerplan/core`](../spannerplan) (WASM-backed).
 From a [GitHub Release](https://github.com/apstndb/spannerplan-rs/releases) tarball:
 
 ```bash
-gh release download v0.1.0-alpha.1 --repo apstndb/spannerplan-rs --pattern 'spannerplan-cli*.tgz'
-npm install -g ./spannerplan-cli-0.1.0-alpha.1.tgz
+gh release download v0.1.0-alpha.2 --repo apstndb/spannerplan-rs \
+  --pattern 'spannerplan-core*.tgz' --pattern 'spannerplan-cli*.tgz'
+npm install -g ./spannerplan-core-0.1.0-alpha.2.tgz ./spannerplan-cli-0.1.0-alpha.2.tgz
 ```
+
+Install both tarballs in the same `npm install` invocation. The CLI tarball
+alone cannot resolve the deliberately unpublished `@spannerplan/core` package.
 
 See [`DISTRIBUTION.md`](../../../DISTRIBUTION.md). Not published to npmjs.org.
 

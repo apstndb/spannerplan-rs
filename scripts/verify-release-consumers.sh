@@ -2,7 +2,7 @@
 # Smoke-test consumer installs for a tagged release (run locally after push).
 set -euo pipefail
 
-TAG="${1:-v0.1.0-alpha.1}"
+TAG="${1:-v0.1.0-alpha.2}"
 REPO="${SPANNERPLAN_REPO:-https://github.com/apstndb/spannerplan-rs}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 WORK="$(mktemp -d)"
@@ -49,11 +49,15 @@ print('ok: python render', len(out), 'bytes')
 "
 
 echo "==> npm tarball from workspace build"
-(cd "$ROOT/js" && npm run build && npm pack -w @spannerplan/core)
-TARBALL="$(ls -1 "$ROOT/js"/spannerplan-core-*.tgz | head -1)"
+(cd "$ROOT/js" && npm run build)
+(cd "$ROOT/js" && npm pack --pack-destination "$WORK" -w @spannerplan/core)
+(cd "$ROOT/js" && npm pack --pack-destination "$WORK" -w @spannerplan/cli)
+VERSION="${TAG#v}"
+CORE_TARBALL="$WORK/spannerplan-core-$VERSION.tgz"
+CLI_TARBALL="$WORK/spannerplan-cli-$VERSION.tgz"
 mkdir -p "$WORK/npm-consumer"
-cat > "$WORK/npm-consumer/package.json" <<EOF
-{ "type": "module", "dependencies": { "@spannerplan/core": "file:$TARBALL" } }
+cat > "$WORK/npm-consumer/package.json" <<'EOF'
+{ "type": "module" }
 EOF
 cat > "$WORK/npm-consumer/test.mjs" <<'EOF'
 import { readFileSync } from "node:fs";
@@ -63,6 +67,8 @@ const result = renderTreeTable(yaml, "PLAN", "CURRENT");
 if ("error" in result) throw new Error(result.error);
 console.log("ok: js render", result.output.length, "bytes");
 EOF
-(cd "$WORK/npm-consumer" && npm install -q && node test.mjs "$ROOT/testdata/reference/dca.yaml")
+(cd "$WORK/npm-consumer" && npm install -q "$CORE_TARBALL" "$CLI_TARBALL")
+(cd "$WORK/npm-consumer" && node test.mjs "$ROOT/testdata/reference/dca.yaml")
+"$WORK/npm-consumer/node_modules/.bin/rendertree" -mode plan <"$ROOT/testdata/reference/dca.yaml" >/dev/null
 
 echo "All consumer smoke tests passed for $TAG"

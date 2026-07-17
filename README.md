@@ -24,25 +24,25 @@ Caveats: [`bindings/README.md`](bindings/README.md#ffi-bindings-vs-native-implem
 
 ## Install
 
-Replace `v0.1.0-alpha.1` with the [release tag](https://github.com/apstndb/spannerplan-rs/releases) you want.
+Replace `v0.1.0-alpha.2` with the [release tag](https://github.com/apstndb/spannerplan-rs/releases) you want.
 
 **Rust** — `Cargo.toml`:
 
 ```toml
-spannerplan = { git = "https://github.com/apstndb/spannerplan-rs", tag = "v0.1.0-alpha.1" }
+spannerplan = { git = "https://github.com/apstndb/spannerplan-rs", tag = "v0.1.0-alpha.2" }
 ```
 
 **JavaScript** — prebuilt tarball from a release (WASM included):
 
 ```bash
-gh release download v0.1.0-alpha.1 --repo apstndb/spannerplan-rs --pattern 'spannerplan-core*.tgz'
-npm install ./spannerplan-core-0.1.0-alpha.1.tgz
+gh release download v0.1.0-alpha.2 --repo apstndb/spannerplan-rs --pattern 'spannerplan-core*.tgz'
+npm install ./spannerplan-core-0.1.0-alpha.2.tgz
 ```
 
 **Python** — git + FFI library:
 
 ```bash
-pip install "spannerplan @ git+https://github.com/apstndb/spannerplan-rs@v0.1.0-alpha.1#subdirectory=bindings/python"
+pip install "spannerplan @ git+https://github.com/apstndb/spannerplan-rs@v0.1.0-alpha.2#subdirectory=bindings/python"
 export SPANNERPLAN_FFI_LIB=/path/to/libspannerplan_ffi.dylib   # from the release
 ```
 
@@ -69,7 +69,7 @@ println!("{table}");
 From a release:
 
 ```bash
-cargo install --git https://github.com/apstndb/spannerplan-rs --tag v0.1.0-alpha.1 spannerplan-cli
+cargo install --git https://github.com/apstndb/spannerplan-rs --tag v0.1.0-alpha.2 spannerplan-cli
 rendertree -mode plan < plan.yaml
 ```
 
@@ -78,10 +78,14 @@ rendertree -mode plan < plan.yaml
 From a release tarball:
 
 ```bash
-gh release download v0.1.0-alpha.1 --pattern 'spannerplan-cli*.tgz'
-npm install -g ./spannerplan-cli-0.1.0-alpha.1.tgz
+gh release download v0.1.0-alpha.2 \
+  --pattern 'spannerplan-core*.tgz' --pattern 'spannerplan-cli*.tgz'
+npm install -g ./spannerplan-core-0.1.0-alpha.2.tgz ./spannerplan-cli-0.1.0-alpha.2.tgz
 rendertree -mode plan < plan.yaml
 ```
+
+Install both tarballs in the same `npm install` invocation. The CLI tarball
+alone cannot resolve the deliberately unpublished `@spannerplan/core` package.
 
 In application code, `import { renderTreeTable } from "@spannerplan/core"`. See
 [`js/packages/spannerplan/README.md`](js/packages/spannerplan/README.md).
@@ -93,7 +97,7 @@ from git, download `libspannerplan_ffi.*` from a release, set `SPANNERPLAN_FFI_L
 
 ```bash
 # Python example
-pip install "spannerplan @ git+https://github.com/apstndb/spannerplan-rs@v0.1.0-alpha.1#subdirectory=bindings/python"
+pip install "spannerplan @ git+https://github.com/apstndb/spannerplan-rs@v0.1.0-alpha.2#subdirectory=bindings/python"
 export SPANNERPLAN_FFI_LIB="$PWD/libspannerplan_ffi.so"
 rendertree -mode plan < plan.yaml
 ```
@@ -188,6 +192,6 @@ CI: [`.github/workflows/ci.yml`](.github/workflows/ci.yml),
 
 Tag `v*` triggers [`.github/workflows/release.yml`](.github/workflows/release.yml)
 (FFI artifacts + npm tarballs attached to GitHub Releases). Verify consumer
-installs: `bash scripts/verify-release-consumers.sh v0.1.0-alpha.1`.
+installs: `bash scripts/verify-release-consumers.sh v0.1.0-alpha.2`.
 
 Rust crates are `publish = false`; releases do not publish to crates.io.

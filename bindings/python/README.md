@@ -59,7 +59,7 @@ each [GitHub Release](https://github.com/apstndb/spannerplan-rs/releases):
 Download for your platform:
 
 ```bash
-gh release download v0.1.0-alpha.1 --repo apstndb/spannerplan-rs \
+gh release download v0.1.0-alpha.2 --repo apstndb/spannerplan-rs \
   --pattern 'libspannerplan_ffi.dylib'   # or .so / .dll
 export SPANNERPLAN_FFI_DIR="$PWD"
 cd bindings/python && pytest

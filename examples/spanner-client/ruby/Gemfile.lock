@@ -1,7 +1,7 @@
 PATH
   remote: ../../../bindings/ruby
   specs:
-    spannerplan (0.1.0.alpha.1)
+    spannerplan (0.1.0.alpha.2)
       fiddle
 
 GEM
@@ -209,7 +209,7 @@ CHECKSUMS
   public_suffix (7.0.5) sha256=1a8bb08f1bbea19228d3bed6e5ed908d1cb4f7c2726d18bd9cadf60bc676f623
   rake (13.4.2) sha256=cb825b2bd5f1f8e91ca37bddb4b9aaf345551b4731da62949be002fa89283701
   signet (0.22.0) sha256=b76d495ccb07ad35dbc89f3e920665a9d8ed717141955034005d7843dcfe4780
-  spannerplan (0.1.0.alpha.1)
+  spannerplan (0.1.0.alpha.2)
   uri (1.1.1) sha256=379fa58d27ffb1387eaada68c749d1426738bd0f654d812fcc07e7568f5c57c6
 
 BUNDLED WITH

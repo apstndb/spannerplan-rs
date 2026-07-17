@@ -10,7 +10,8 @@
     "build:wasm": "npm run build:wasm -w @spannerplan/core",
     "dev": "npm run dev -w rendertree-web",
     "typecheck": "tsc --noEmit -p packages/spannerplan/tsconfig.json && tsc --noEmit -p packages/cli/tsconfig.json",
-    "test": "npm run test -w @spannerplan/core && npm run test -w @spannerplan/cli"
+    "test": "npm run test -w @spannerplan/core && npm run test -w @spannerplan/cli && npm run test:release-packages",
+    "test:release-packages": "npm run build && bash scripts/verify-release-js-tarballs.sh"
   },
   "engines": {
     "node": ">=20"

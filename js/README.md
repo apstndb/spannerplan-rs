@@ -48,8 +48,8 @@ Prebuilt packages are attached to [GitHub Releases](https://github.com/apstndb/s
 See [`DISTRIBUTION.md`](../DISTRIBUTION.md#javascript--typescript).
 
 ```bash
-gh release download v0.1.0-alpha.1 --repo apstndb/spannerplan-rs --pattern 'spannerplan-core*.tgz'
-npm install ./spannerplan-core-0.1.0-alpha.1.tgz
+gh release download v0.1.0-alpha.2 --repo apstndb/spannerplan-rs --pattern 'spannerplan-core*.tgz'
+npm install ./spannerplan-core-0.1.0-alpha.2.tgz
 ```
 
 From git (builds WASM from source):
@@ -57,7 +57,7 @@ From git (builds WASM from source):
 ```json
 {
   "dependencies": {
-    "@spannerplan/core": "github:apstndb/spannerplan-rs#v0.1.0-alpha.1&path:js/packages/spannerplan"
+    "@spannerplan/core": "github:apstndb/spannerplan-rs#v0.1.0-alpha.2&path:js/packages/spannerplan"
   }
 }
 ```
