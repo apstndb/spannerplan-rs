@@ -2,7 +2,7 @@
 
 This self-contained Go module creates the bundled viewer's v1alpha2 Plantree
 goldens (numeric wire revision 2) in [`testdata/golden/`](../../testdata/golden/). It is pinned to
-`github.com/apstndb/spannerplan v0.3.0-alpha.1`, the same reference version as
+`github.com/apstndb/spannerplan v0.3.0-alpha.2`, the same reference version as
 the release parity gate. The source YAML fixtures remain verbatim captures
 copied from the earlier provenance-pinned tag.
 

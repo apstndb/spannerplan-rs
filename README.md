@@ -190,9 +190,18 @@ For a local run:
 
 ```bash
 go_bin_dir="$(mktemp -d)"
-GOBIN="$go_bin_dir" go install github.com/apstndb/spannerplan/cmd/rendertree@v0.3.0-alpha.1
+GOBIN="$go_bin_dir" go install github.com/apstndb/spannerplan/cmd/rendertree@v0.3.0-alpha.2
 SPANNERPLAN_GO_RENDERTREE="$go_bin_dir/rendertree" cargo test -p spannerplan-cli
 ```
+
+### Structural signatures (alpha)
+
+`spannerplan_core::plantree::structural_signature` compares visible plan shape
+without volatile execution statistics or plan-node IDs. Its
+`spannerplan.structural_signature.v1alpha1` encoding is alpha-only: equality is
+meaningful only within that revision, not as a stable interchange contract.
+It is currently a Rust core API only; it is intentionally not exported through
+the WASM, FFI, JavaScript, or viewer-internal structured-row surfaces.
 
 ### Build gates
 

@@ -11,7 +11,7 @@ use alloc::format;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
-use crate::model::Kind;
+use crate::model::{Kind, Metadata, MetadataValue, PlanNode};
 use crate::queryplan::{node_title, NodeTitleOptions, QueryPlan};
 use crate::stats::{self, ExecutionStats, StatsError};
 use crate::treerender::{
@@ -35,6 +35,57 @@ pub const MAX_PLANTREE_DEPTH: usize = 256;
 /// browser tab. It may be raised non-breakingly when real captures show that a
 /// higher bound is needed.
 pub const MAX_PLANTREE_OCCURRENCES: usize = 4096;
+
+/// Current alpha revision of [`structural_signature`]'s canonical encoding.
+pub const STRUCTURAL_SIGNATURE_VERSION: &str = "spannerplan.structural_signature.v1alpha1";
+
+/// Errors from [`structural_signature`].
+///
+/// Traversal errors intentionally retain [`ProcessPlanError`], so callers can
+/// distinguish the shared cycle and resource-limit guards from malformed
+/// metadata. This alpha encoding is deliberately fail-closed: a value that
+/// cannot be represented canonically has no signature.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StructuralSignatureError {
+    Traversal(ProcessPlanError),
+    Metadata {
+        node_index: i32,
+        error: StructuralSignatureMetadataError,
+    },
+}
+
+impl core::fmt::Display for StructuralSignatureError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            StructuralSignatureError::Traversal(error) => error.fmt(f),
+            StructuralSignatureError::Metadata { node_index, error } => {
+                write!(f, "plan node {node_index} metadata: {error}")
+            }
+        }
+    }
+}
+
+impl From<ProcessPlanError> for StructuralSignatureError {
+    fn from(error: ProcessPlanError) -> Self {
+        Self::Traversal(error)
+    }
+}
+
+/// Metadata failures that prevent a canonical structural signature.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StructuralSignatureMetadataError {
+    NonFiniteNumber,
+}
+
+impl core::fmt::Display for StructuralSignatureMetadataError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            StructuralSignatureMetadataError::NonFiniteNumber => {
+                f.write_str("non-finite protobuf number Value")
+            }
+        }
+    }
+}
 
 /// One rendered plan row plus predicate and execution metadata.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -346,37 +397,11 @@ fn build_rendered_tree(
     title_opts: &NodeTitleOptions,
     state: &mut TraversalState,
 ) -> Result<Option<RenderedNode>, ProcessPlanError> {
-    let link = match (incoming.parent, incoming.raw_child_link_index) {
-        (Some(parent), Some(index)) => Some(&parent.get_child_links()[index]),
-        (None, None) => None,
-        // This is internal call-site state, not malformed user input.
-        _ => return Err(ProcessPlanError::Internal("incomplete incoming edge")),
-    };
-    if !qp.is_visible(link) {
-        return Ok(None);
-    }
-
     let sep = if opts.compact { "" } else { " " };
-
-    let node = qp.get_node_by_child_link(link);
+    let Some(node) = begin_visible_occurrence(qp, incoming, occurrence.depth, state)? else {
+        return Ok(None);
+    };
     let node_index = node.get_index();
-    if state.ancestors.contains(&node_index) {
-        return Err(ProcessPlanError::Cycle(node_index));
-    }
-    if occurrence.depth > MAX_PLANTREE_DEPTH {
-        return Err(ProcessPlanError::DepthLimitExceeded {
-            limit: MAX_PLANTREE_DEPTH,
-            node_index,
-        });
-    }
-    if state.occurrences == MAX_PLANTREE_OCCURRENCES {
-        return Err(ProcessPlanError::OccurrenceLimitExceeded {
-            limit: MAX_PLANTREE_OCCURRENCES,
-            node_index,
-        });
-    }
-    state.ancestors.insert(node_index);
-    state.occurrences += 1;
     let link_type = match (incoming.parent, incoming.raw_child_link_index) {
         (Some(parent), Some(index)) => qp.link_type_in_parent(parent, index),
         (None, None) => "",
@@ -447,7 +472,7 @@ fn build_rendered_tree(
         }
     }
 
-    state.ancestors.remove(&node_index);
+    finish_visible_occurrence(node_index, state);
 
     Ok(Some(RenderedNode {
         row_id: occurrence.row_id,
@@ -463,12 +488,346 @@ fn build_rendered_tree(
     }))
 }
 
+/// Starts one visible tree occurrence using the shared ProcessPlan guards.
+///
+/// Structural signatures and rendered trees must agree about cycles, depth,
+/// occurrence expansion, and the order of those checks. Keep that policy here
+/// rather than duplicating it in the two walkers.
+fn begin_visible_occurrence<'a>(
+    qp: &'a QueryPlan,
+    incoming: IncomingEdge<'a>,
+    depth: usize,
+    state: &mut TraversalState,
+) -> Result<Option<&'a PlanNode>, ProcessPlanError> {
+    let link = match (incoming.parent, incoming.raw_child_link_index) {
+        (Some(parent), Some(index)) => parent
+            .get_child_links()
+            .get(index)
+            .map(Some)
+            .ok_or(ProcessPlanError::Internal("child link index out of range"))?,
+        (None, None) => None,
+        // This is internal call-site state, not malformed user input.
+        _ => return Err(ProcessPlanError::Internal("incomplete incoming edge")),
+    };
+    if !qp.is_visible(link) {
+        return Ok(None);
+    }
+
+    let node = qp.get_node_by_child_link(link);
+    let node_index = node.get_index();
+    if state.ancestors.contains(&node_index) {
+        return Err(ProcessPlanError::Cycle(node_index));
+    }
+    if depth > MAX_PLANTREE_DEPTH {
+        return Err(ProcessPlanError::DepthLimitExceeded {
+            limit: MAX_PLANTREE_DEPTH,
+            node_index,
+        });
+    }
+    if state.occurrences == MAX_PLANTREE_OCCURRENCES {
+        return Err(ProcessPlanError::OccurrenceLimitExceeded {
+            limit: MAX_PLANTREE_OCCURRENCES,
+            node_index,
+        });
+    }
+    state.ancestors.insert(node_index);
+    state.occurrences += 1;
+    Ok(Some(node))
+}
+
+fn finish_visible_occurrence(node_index: i32, state: &mut TraversalState) {
+    state.ancestors.remove(&node_index);
+}
+
 fn flatten_preorder(mut node: RenderedNode, out: &mut Vec<RenderedNode>) {
     let children = core::mem::take(&mut node.children);
     out.push(node);
     for child in children {
         flatten_preorder(child, out);
     }
+}
+
+/// Returns a deterministic, versioned canonical string describing the visible
+/// relational plan tree for comparison.
+///
+/// The alpha encoding includes display names, parent-link types, recursively
+/// typed metadata, predicates, and ordered visible occurrences. It excludes
+/// IDs, execution statistics, and `subquery_cluster_node` at every metadata
+/// struct depth. Equality is meaningful only within this alpha revision: this
+/// is not a stable cross-version or cross-language interchange contract.
+///
+/// The encoding deliberately omits node IDs, so repeated identical operators
+/// and shared DAG subtrees can have identical fragments. Consumers must expose
+/// that matching ambiguity rather than silently pairing nodes. This is also
+/// intentionally separate from the viewer's internal structured-row DTO.
+pub fn structural_signature(qp: &QueryPlan) -> Result<String, StructuralSignatureError> {
+    let mut signature = String::from(STRUCTURAL_SIGNATURE_VERSION);
+    signature.push('\n');
+    write_signature_node(
+        qp,
+        IncomingEdge {
+            parent: None,
+            raw_child_link_index: None,
+        },
+        0,
+        &mut TraversalState::default(),
+        &mut signature,
+    )?;
+    Ok(signature)
+}
+
+fn write_signature_node(
+    qp: &QueryPlan,
+    incoming: IncomingEdge<'_>,
+    depth: usize,
+    state: &mut TraversalState,
+    signature: &mut String,
+) -> Result<(), StructuralSignatureError> {
+    let Some(node) = begin_visible_occurrence(qp, incoming, depth, state)? else {
+        return Ok(());
+    };
+    let node_index = node.get_index();
+    let result = (|| {
+        let link_type = match (incoming.parent, incoming.raw_child_link_index) {
+            (Some(parent), Some(index)) => qp.link_type_in_parent(parent, index),
+            (None, None) => "",
+            _ => return Err(ProcessPlanError::Internal("incomplete incoming edge").into()),
+        };
+        signature.push_str("node ");
+        signature.push_str(&depth.to_string());
+        signature.push(' ');
+        append_signature_string(signature, link_type);
+        signature.push(' ');
+        append_signature_strings(signature, &[node.get_display_name()]);
+        signature.push(' ');
+        append_signature_fields(signature, &signature_metadata(node)?);
+        signature.push(' ');
+        append_signature_fields(signature, &signature_predicates(qp, node));
+        signature.push('\n');
+
+        for (raw_child_link_index, child_link) in node.get_child_links().iter().enumerate() {
+            if !qp.is_visible(Some(child_link)) {
+                continue;
+            }
+            write_signature_node(
+                qp,
+                IncomingEdge {
+                    parent: Some(node),
+                    raw_child_link_index: Some(raw_child_link_index),
+                },
+                depth + 1,
+                state,
+                signature,
+            )?;
+        }
+        Ok(())
+    })();
+    finish_visible_occurrence(node_index, state);
+    result
+}
+
+struct SignatureField {
+    key: String,
+    value: String,
+}
+
+fn signature_metadata(node: &PlanNode) -> Result<Vec<SignatureField>, StructuralSignatureError> {
+    let mut fields = Vec::new();
+    for (key, value) in &node.metadata {
+        if key == "subquery_cluster_node" {
+            continue;
+        }
+        let value = signature_value(value).map_err(|error| StructuralSignatureError::Metadata {
+            node_index: node.get_index(),
+            error,
+        })?;
+        fields.push(SignatureField {
+            key: key.clone(),
+            value,
+        });
+    }
+    // Metadata is currently a BTreeMap, but sorting here makes the canonical
+    // rule explicit if that storage choice changes.
+    fields.sort_by(|left, right| left.key.cmp(&right.key));
+    Ok(fields)
+}
+
+fn signature_value(value: &MetadataValue) -> Result<String, StructuralSignatureMetadataError> {
+    let mut canonical = String::new();
+    match value {
+        MetadataValue::Null => canonical.push_str("null"),
+        MetadataValue::Bool(value) => {
+            canonical.push_str("bool ");
+            canonical.push_str(if *value { "true" } else { "false" });
+        }
+        MetadataValue::Number(value) => {
+            if !value.is_finite() {
+                return Err(StructuralSignatureMetadataError::NonFiniteNumber);
+            }
+            canonical.push_str("number ");
+            canonical.push_str(&go_g_format(*value));
+        }
+        MetadataValue::String(value) => {
+            canonical.push_str("string ");
+            append_signature_string(&mut canonical, value);
+        }
+        MetadataValue::Struct(value) => append_signature_struct(&mut canonical, value)?,
+        MetadataValue::List(value) => append_signature_list(&mut canonical, value)?,
+    }
+    Ok(canonical)
+}
+
+fn append_signature_struct(
+    signature: &mut String,
+    metadata: &Metadata,
+) -> Result<(), StructuralSignatureMetadataError> {
+    let fields = metadata
+        .iter()
+        .filter(|(key, _)| key.as_str() != "subquery_cluster_node")
+        .collect::<Vec<_>>();
+    signature.push_str("struct ");
+    signature.push_str(&fields.len().to_string());
+    signature.push('[');
+    for (key, value) in fields {
+        append_signature_string(signature, key);
+        append_signature_string(signature, &signature_value(value)?);
+    }
+    signature.push(']');
+    Ok(())
+}
+
+fn append_signature_list(
+    signature: &mut String,
+    values: &[MetadataValue],
+) -> Result<(), StructuralSignatureMetadataError> {
+    signature.push_str("list ");
+    signature.push_str(&values.len().to_string());
+    signature.push('[');
+    for value in values {
+        append_signature_string(signature, &signature_value(value)?);
+    }
+    signature.push(']');
+    Ok(())
+}
+
+fn signature_predicates(qp: &QueryPlan, node: &PlanNode) -> Vec<SignatureField> {
+    node.get_child_links()
+        .iter()
+        .filter(|link| qp.is_predicate(Some(link)))
+        .map(|link| SignatureField {
+            key: link.get_type().to_string(),
+            value: qp
+                .get_node_by_child_link(Some(link))
+                .get_short_representation_description()
+                .to_string(),
+        })
+        .collect()
+}
+
+fn append_signature_string(signature: &mut String, value: &str) {
+    signature.push_str(&value.len().to_string());
+    signature.push(':');
+    signature.push_str(value);
+    signature.push(',');
+}
+
+fn append_signature_strings(signature: &mut String, values: &[&str]) {
+    signature.push_str(&values.len().to_string());
+    signature.push('[');
+    for value in values {
+        append_signature_string(signature, value);
+    }
+    signature.push(']');
+}
+
+fn append_signature_fields(signature: &mut String, fields: &[SignatureField]) {
+    signature.push_str(&fields.len().to_string());
+    signature.push('[');
+    for field in fields {
+        signature.push('(');
+        append_signature_string(signature, &field.key);
+        append_signature_string(signature, &field.value);
+        signature.push(')');
+    }
+    signature.push(']');
+}
+
+/// Equivalent to Go `strconv.FormatFloat(value, 'g', -1, 64)` for finite f64.
+///
+/// Ryu supplies the shortest round-tripping digits in `no_std`; Go's `g`
+/// spelling then chooses decimal notation for exponents `-4..=5` and scientific
+/// notation otherwise, with an explicit sign and two-digit minimum exponent.
+fn go_g_format(value: f64) -> String {
+    if value == 0.0 {
+        return if value.is_sign_negative() {
+            "-0".to_string()
+        } else {
+            "0".to_string()
+        };
+    }
+
+    let mut buffer = ryu::Buffer::new();
+    let rendered = buffer.format_finite(value);
+    let (negative, unsigned) = rendered
+        .strip_prefix('-')
+        .map_or((false, rendered), |rest| (true, rest));
+    let (mantissa, exponent_part) = unsigned.split_once('e').unwrap_or((unsigned, "0"));
+    let exponent_part = exponent_part.parse::<i32>().unwrap_or(0);
+    let (before_decimal, after_decimal) = mantissa.split_once('.').unwrap_or((mantissa, ""));
+
+    let mut digits = String::from(before_decimal);
+    digits.push_str(after_decimal);
+    if !after_decimal.is_empty() {
+        while digits.ends_with('0') {
+            digits.pop();
+        }
+    }
+    let leading_zeros = digits.bytes().take_while(|digit| *digit == b'0').count();
+    digits.drain(..leading_zeros);
+    let decimal_exponent = before_decimal.len() as i32 - 1 - leading_zeros as i32 + exponent_part;
+
+    let mut output = String::new();
+    if negative {
+        output.push('-');
+    }
+    if (-4..6).contains(&decimal_exponent) {
+        let decimal_position = decimal_exponent + 1;
+        if decimal_position <= 0 {
+            output.push_str("0.");
+            for _ in 0..-decimal_position {
+                output.push('0');
+            }
+            output.push_str(&digits);
+        } else if decimal_position as usize >= digits.len() {
+            output.push_str(&digits);
+            for _ in 0..decimal_position as usize - digits.len() {
+                output.push('0');
+            }
+        } else {
+            let split = decimal_position as usize;
+            output.push_str(&digits[..split]);
+            output.push('.');
+            output.push_str(&digits[split..]);
+        }
+    } else {
+        output.push_str(&digits[..1]);
+        if digits.len() > 1 {
+            output.push('.');
+            output.push_str(&digits[1..]);
+        }
+        output.push('e');
+        if decimal_exponent >= 0 {
+            output.push('+');
+        } else {
+            output.push('-');
+        }
+        let exponent = decimal_exponent.unsigned_abs();
+        if exponent < 10 {
+            output.push('0');
+        }
+        output.push_str(&exponent.to_string());
+    }
+    output
 }
 
 #[cfg(test)]
@@ -516,6 +875,163 @@ mod tests {
             child_index,
             r#type: r#type.to_string(),
             variable: String::new(),
+        }
+    }
+
+    #[test]
+    fn structural_signature_frames_typed_metadata_and_excludes_nested_ids() {
+        let metadata = Metadata::from([
+            (
+                "future".to_string(),
+                MetadataValue::Struct(Metadata::from([
+                    (
+                        "omega".to_string(),
+                        MetadataValue::List(vec![MetadataValue::Bool(false)]),
+                    ),
+                    (
+                        "subquery_cluster_node".to_string(),
+                        MetadataValue::String("not-a-signature-input".to_string()),
+                    ),
+                ])),
+            ),
+            ("number".to_string(), MetadataValue::Number(1.5)),
+        ]);
+        let qp = QueryPlan::new(vec![PlanNode {
+            index: 0,
+            kind: Kind::Relational,
+            display_name: "Scan|Odd".to_string(),
+            metadata,
+            ..PlanNode::default()
+        }])
+        .unwrap();
+
+        let signature = structural_signature(&qp).unwrap();
+        assert_eq!(
+            signature,
+            concat!(
+                "spannerplan.structural_signature.v1alpha1\n",
+                "node 0 0:, 1[8:Scan|Odd,] ",
+                "2[(6:future,44:struct 1[5:omega,22:list 1[10:bool false,],],)",
+                "(6:number,10:number 1.5,)] 0[]\n"
+            )
+        );
+        assert!(!signature.contains("subquery_cluster_node"));
+    }
+
+    #[test]
+    fn structural_signature_uses_actual_parent_link_and_expands_dags() {
+        let qp = QueryPlan::new(vec![
+            relational(0, "Root", vec![link(1, ""), link(2, "")]),
+            relational(1, "Cross Apply", vec![link(3, "")]),
+            relational(2, "Other", vec![link(3, "Map")]),
+            relational(3, "Shared", vec![]),
+        ])
+        .unwrap();
+
+        let signature = structural_signature(&qp).unwrap();
+        assert_eq!(signature.matches("6:Shared,").count(), 2);
+        assert_eq!(signature.matches("5:Input,").count(), 1);
+        assert_eq!(signature.matches("3:Map,").count(), 1);
+    }
+
+    #[test]
+    fn structural_signature_reuses_process_plan_limits() {
+        let cycle = QueryPlan::new(vec![
+            relational(0, "Root", vec![link(1, "")]),
+            relational(1, "Child", vec![link(0, "")]),
+        ])
+        .unwrap();
+        assert_eq!(
+            structural_signature(&cycle).unwrap_err(),
+            StructuralSignatureError::Traversal(ProcessPlanError::Cycle(0))
+        );
+
+        let nodes = (0..=MAX_PLANTREE_DEPTH + 1)
+            .map(|index| {
+                relational(
+                    index as i32,
+                    "Chain",
+                    if index == MAX_PLANTREE_DEPTH + 1 {
+                        vec![]
+                    } else {
+                        vec![link(index as i32 + 1, "")]
+                    },
+                )
+            })
+            .collect();
+        let depth = QueryPlan::new(nodes).unwrap();
+        assert_eq!(
+            structural_signature(&depth).unwrap_err(),
+            StructuralSignatureError::Traversal(ProcessPlanError::DepthLimitExceeded {
+                limit: MAX_PLANTREE_DEPTH,
+                node_index: (MAX_PLANTREE_DEPTH + 1) as i32,
+            })
+        );
+    }
+
+    #[test]
+    fn structural_signature_rejects_nonfinite_metadata_numbers() {
+        let qp = QueryPlan::new(vec![PlanNode {
+            index: 0,
+            kind: Kind::Relational,
+            metadata: Metadata::from([("future".to_string(), MetadataValue::Number(f64::NAN))]),
+            ..PlanNode::default()
+        }])
+        .unwrap();
+        assert_eq!(
+            structural_signature(&qp).unwrap_err(),
+            StructuralSignatureError::Metadata {
+                node_index: 0,
+                error: StructuralSignatureMetadataError::NonFiniteNumber,
+            }
+        );
+
+        let branch_count = 12;
+        let mut nodes = Vec::with_capacity(branch_count + 1);
+        for index in 0..=branch_count {
+            nodes.push(relational(
+                index as i32,
+                "Branch",
+                if index == branch_count {
+                    vec![]
+                } else {
+                    vec![link(index as i32 + 1, ""), link(index as i32 + 1, "")]
+                },
+            ));
+        }
+        let occurrences = QueryPlan::new(nodes).unwrap();
+        assert_eq!(
+            structural_signature(&occurrences).unwrap_err(),
+            StructuralSignatureError::Traversal(ProcessPlanError::OccurrenceLimitExceeded {
+                limit: MAX_PLANTREE_OCCURRENCES,
+                node_index: 1,
+            })
+        );
+    }
+
+    #[test]
+    fn go_g_format_matches_go_generated_boundary_vectors() {
+        // Generated with Go 1.26.5: strconv.FormatFloat(v, 'g', -1, 64).
+        // The hexadecimal bit patterns make this a stable cross-tool fixture.
+        let cases = [
+            (0x0000_0000_0000_0000, "0"),
+            (0x8000_0000_0000_0000, "-0"),
+            (0x3ff0_0000_0000_0000, "1"),
+            (0x3ff8_0000_0000_0000, "1.5"),
+            (0x3eb0_c6f7_a0b5_ed8d, "1e-06"),
+            (0x3ee4_f8b5_88e3_68f1, "1e-05"),
+            (0x3f1a_36e2_eb1c_432d, "0.0001"),
+            (0x3f50_624d_d2f1_a9fc, "0.001"),
+            (0x43e1_58e4_6091_3d00, "1e+19"),
+            (0x4415_af1d_78b5_8c40, "1e+20"),
+            (0x444b_1ae4_d6e2_ef50, "1e+21"),
+            (0x441a_c53a_7e04_bcd9, "1.2345678901234567e+20"),
+            (0x4450_bb44_8ec2_f608, "1.2345678901234568e+21"),
+            (0x0000_0000_0000_0001, "5e-324"),
+            (0x7fef_ffff_ffff_ffff, "1.7976931348623157e+308"),
+        ];
+        for (bits, expected) in cases {
+            assert_eq!(go_g_format(f64::from_bits(bits)), expected, "{bits:016x}");
         }
     }
 

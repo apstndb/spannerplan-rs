@@ -18,7 +18,7 @@ golden outputs and the tests that consume them.
 ## Regeneration workflow
 
 1. Check out a Go tree at the Spannerplan version you want to match (pin the
-   same tag/commit CI uses for CLI parity, e.g. `v0.3.0-alpha.1`, when updating
+   same tag/commit CI uses for CLI parity, e.g. `v0.3.0-alpha.2`, when updating
    goldens for a release).
 2. From the Go repo root, run `lab/genrsgolden` (exact invocation is defined in
    that tool's source — typically writes one file per matrix case).

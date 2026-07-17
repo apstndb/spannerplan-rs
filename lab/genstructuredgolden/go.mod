@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	cloud.google.com/go/spanner v1.90.0
-	github.com/apstndb/spannerplan v0.3.0-alpha.1
+	github.com/apstndb/spannerplan v0.3.0-alpha.2
 )
 
 require (
