@@ -44,7 +44,7 @@ npm install ./spannerplan-core-0.1.0-alpha.2.tgz
 
 ```bash
 pip install "spannerplan @ git+https://github.com/apstndb/spannerplan-rs@v0.1.0-alpha.2#subdirectory=bindings/python"
-gh release download v0.1.0-alpha.2 --pattern \
+gh release download v0.1.0-alpha.2 --repo apstndb/spannerplan-rs --pattern \
   'spannerplan-ffi-0.1.0-alpha.2-aarch64-apple-darwin.tar.gz'
 tar -xzf spannerplan-ffi-0.1.0-alpha.2-aarch64-apple-darwin.tar.gz
 export SPANNERPLAN_FFI_LIB="$PWD/libspannerplan_ffi.dylib"
@@ -85,7 +85,7 @@ rendertree -mode plan < plan.yaml
 From a release tarball:
 
 ```bash
-gh release download v0.1.0-alpha.2 \
+gh release download v0.1.0-alpha.2 --repo apstndb/spannerplan-rs \
   --pattern 'spannerplan-core*.tgz' --pattern 'spannerplan-cli*.tgz'
 npm install -g ./spannerplan-core-0.1.0-alpha.2.tgz ./spannerplan-cli-0.1.0-alpha.2.tgz
 rendertree -mode plan < plan.yaml

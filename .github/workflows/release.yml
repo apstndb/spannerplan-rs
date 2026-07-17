@@ -50,6 +50,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Verify stock macOS checksum selection
+        if: matrix.rust_target == 'aarch64-apple-darwin'
+        run: bash scripts/test-verify-release-checksums.sh shasum
+
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.rust_target }}
@@ -182,7 +186,7 @@ jobs:
           `spannerplan-cli-*.tgz`):
 
           ```bash
-          gh release download TAG --pattern 'spannerplan-core*.tgz'
+          gh release download TAG --repo apstndb/spannerplan-rs --pattern 'spannerplan-core*.tgz'
           npm install ./spannerplan-core-*.tgz
           ```
 
