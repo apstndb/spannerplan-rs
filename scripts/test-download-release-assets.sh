@@ -30,7 +30,9 @@ for argument in "$@"; do
       exit 0
       ;;
     */assets/102)
-      printf 'tarball fixture\n'
+      if [[ "${MOCK_EMPTY_ASSET:-}" != "1" ]]; then
+        printf 'tarball fixture\n'
+      fi
       exit 0
       ;;
   esac
@@ -67,5 +69,15 @@ if MOCK_EXTRA_ASSET=1 PATH="$MOCK_BIN:$PATH" bash "$ROOT/scripts/download-releas
   echo "error: unexpected release asset unexpectedly succeeded" >&2
   exit 1
 fi
+
+if MOCK_EMPTY_ASSET=1 PATH="$MOCK_BIN:$PATH" bash "$ROOT/scripts/download-release-assets.sh" \
+  --repo apstndb/spannerplan-rs \
+  --release-id 355624153 \
+  --dir "$WORK/empty" \
+  SHA256SUMS.txt spannerplan-core-0.1.0-alpha.2.tgz >"$WORK/empty.out" 2>"$WORK/empty.err"; then
+  echo "error: empty release asset unexpectedly succeeded" >&2
+  exit 1
+fi
+grep -F 'error: downloaded asset is empty: spannerplan-core-0.1.0-alpha.2.tgz' "$WORK/empty.err" >/dev/null
 
 echo "draft release asset downloader smoke test passed"

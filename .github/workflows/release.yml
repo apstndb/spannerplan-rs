@@ -229,7 +229,9 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      # Draft releases and their assets require push-level repository access.
+      # Keep this token step-scoped below; consumer code runs in later steps.
+      contents: write
     steps:
       - uses: actions/checkout@v4
         with:

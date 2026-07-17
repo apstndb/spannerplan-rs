@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # Keep tag lookup data separate from the jq program in the release workflow.
+# The grep expressions below intentionally match literal shell and jq source.
+# shellcheck disable=SC2016
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -20,16 +22,17 @@ if ! grep -F -- '--arg tag "$TAG"' "$WORKFLOW" | grep -F 'gsub("TAG"; $tag)' >/d
   exit 1
 fi
 
-tag_argument_count="$(grep -F -- '--arg tag "$TAG"' "$WORKFLOW" | wc -l | tr -d ' ')"
-if [[ "$tag_argument_count" != "3" ]]; then
-  echo "error: expected three jq --arg tag uses, found $tag_argument_count" >&2
-  exit 1
-fi
+require_safe_tag_lookup() {
+  local variable="$1"
+  if ! grep -F -A2 "${variable}=\"\$(gh api" "$WORKFLOW" | \
+    grep -F -- '--arg tag "$TAG"' | \
+    grep -F 'select(.tag_name == $tag)' >/dev/null; then
+    echo "error: $variable does not select the tag through jq data" >&2
+    exit 1
+  fi
+}
 
-tag_filter_count="$(grep -F 'select(.tag_name == $tag)' "$WORKFLOW" | wc -l | tr -d ' ')"
-if [[ "$tag_filter_count" != "2" ]]; then
-  echo "error: expected two jq tag filters, found $tag_filter_count" >&2
-  exit 1
-fi
+require_safe_tag_lookup "EXISTING_RELEASE_IDS"
+require_safe_tag_lookup "RELEASE_ID"
 
 echo "release workflow tag lookup safety check passed"

@@ -78,7 +78,7 @@ trap 'rm -f "$ASSET_LIST"' EXIT
 gh api --paginate "repos/${REPO}/releases/${RELEASE_ID}/assets?per_page=100" >"$ASSET_LIST"
 
 expected_asset_names="$(printf '%s\n' "$@" | LC_ALL=C sort)"
-actual_asset_names="$(jq -ers '[ .[][] | .name ] | sort | .[]' "$ASSET_LIST")"
+actual_asset_names="$(jq -ers '.[][] | .name' "$ASSET_LIST" | LC_ALL=C sort)"
 if [[ "$actual_asset_names" != "$expected_asset_names" ]]; then
   {
     echo "error: release asset set differs from the expected set"
@@ -106,6 +106,9 @@ for asset_name in "$@"; do
   # here because a draft release is intentionally not public yet.
   gh api -H 'Accept: application/octet-stream' \
     "repos/${REPO}/releases/assets/${asset_id}" >"$temporary"
-  test -s "$temporary"
+  if [[ ! -s "$temporary" ]]; then
+    echo "error: downloaded asset is empty: $asset_name" >&2
+    exit 1
+  fi
   mv "$temporary" "$target"
 done
