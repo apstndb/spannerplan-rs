@@ -13,9 +13,9 @@ jobs:
     name: Verify release version
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
 
@@ -48,7 +48,7 @@ jobs:
             archive_ext: zip
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Verify stock macOS checksum selection
         if: matrix.rust_target == 'aarch64-apple-darwin'
@@ -80,7 +80,7 @@ jobs:
             tar -czf "$ARCHIVE" -C "$STAGE" "${{ matrix.lib_name }}" spannerplan.h LICENSE
           fi
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: spannerplan-ffi-${{ matrix.rust_target }}
           path: dist/spannerplan-ffi-*${{ matrix.rust_target }}.${{ matrix.archive_ext }}
@@ -89,7 +89,7 @@ jobs:
     needs: verify-version
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -102,7 +102,7 @@ jobs:
         with:
           tool: wasm-pack
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: npm
@@ -125,7 +125,7 @@ jobs:
           mv spannerplan-core-*.tgz ../dist/npm/
           mv spannerplan-cli-*.tgz ../dist/npm/
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: npm-packages
           path: dist/npm
@@ -139,9 +139,9 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
@@ -230,7 +230,7 @@ jobs:
       # Keep this token step-scoped below; consumer code runs in later steps.
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.ref }}
 
@@ -260,11 +260,11 @@ jobs:
           cp testdata/reference/dca.yaml /tmp/spannerplan-consumer/src/plan.yaml
           cargo run --manifest-path /tmp/spannerplan-consumer/Cargo.toml
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6.3.0
         with:
           python-version: "3.12"
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: npm

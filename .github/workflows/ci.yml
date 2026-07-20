@@ -12,7 +12,7 @@ jobs:
   release-portability:
     runs-on: macos-14
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Verify stock macOS checksum selection
         run: bash scripts/test-verify-release-checksums.sh shasum
@@ -28,7 +28,7 @@ jobs:
     env:
       SPANNERPLAN_GO_PARITY: "1"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Check release documentation
         run: bash scripts/check-release-docs.sh
@@ -42,7 +42,7 @@ jobs:
       - name: Add embedded target
         run: rustup target add thumbv7em-none-eabi
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version: stable
 
@@ -92,7 +92,7 @@ jobs:
   js:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -105,7 +105,7 @@ jobs:
         with:
           tool: wasm-pack
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: npm
@@ -132,9 +132,9 @@ jobs:
   msrv:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: dtolnay/rust-toolchain@1.85.0
+      - uses: dtolnay/rust-toolchain@1.100.0
 
       - uses: Swatinem/rust-cache@v2
 
