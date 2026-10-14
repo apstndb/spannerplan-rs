@@ -23,7 +23,7 @@ prost-types = { version = "0.14", default-features = false, optional = true }
 ryu = "1"
 
 [build-dependencies]
-protox = "0.9"
+protox = "0.10"
 prost-build = "0.14"
 
 [features]
