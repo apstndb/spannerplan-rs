@@ -581,6 +581,37 @@ mod tests {
         }
     }
 
+    #[test]
+    fn wrapped_tabs_match_go_cli() {
+        let check = |case: &str, input: &[u8], width: &str| {
+            let args = ["-mode", "plan", "-wrap-width", width];
+            if let Some(want) = go_cli_output(&args, input) {
+                assert_eq!(run_cli(&args, input), want, "{case}");
+            }
+        };
+        for (case, display_name, width) in [
+            ("interior tab", r"a\tbcd", "4"),
+            ("leading tab", r"\tX", "4"),
+            ("wide character before a tab", r"你\tZ", "4"),
+            ("tab at a wrap boundary", r"abcd\tX", "5"),
+        ] {
+            let input = format!(
+                r#"{{"planNodes":[{{"index":0,"kind":"RELATIONAL","displayName":"{display_name}"}}]}}"#
+            );
+            check(case, input.as_bytes(), width);
+        }
+        let input = r#"{"planNodes":[
+            {"index":0,"kind":"RELATIONAL","displayName":"Root","childLinks":[{"childIndex":1},{"childIndex":2}]},
+            {"index":1,"kind":"RELATIONAL","displayName":"ab\ncd\tX"},
+            {"index":2,"kind":"RELATIONAL","displayName":"\t你Z"}
+        ]}"#;
+        check(
+            "tabs on child lines and before multibyte text",
+            input.as_bytes(),
+            "7",
+        );
+    }
+
     fn run_cli(args: &[&str], input: &[u8]) -> String {
         let mut stdout = Vec::new();
         let mut stderr = Vec::new();
