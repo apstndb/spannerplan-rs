@@ -15,7 +15,18 @@ printf '%s  %s\n' \
   '6e5541de5313816a69ccc4800cc237be420cfa84da71b758d21ef9062c935c7b' \
   'asset.txt' >"$WORK/SHA256SUMS.txt"
 
-OUTPUT="$(bash "$ROOT/scripts/verify-release-checksums.sh" "$WORK/SHA256SUMS.txt")"
+verifier_path="$PATH"
+if [[ "$EXPECTED_TOOL" == shasum ]]; then
+  # Modern macOS images may also provide sha256sum. Hide it to exercise
+  # the fallback using the real shasum and the verifier's path utilities.
+  verifier_path="$WORK/bin"
+  mkdir "$verifier_path"
+  for tool in basename dirname shasum; do
+    ln -s "$(command -v "$tool")" "$verifier_path/$tool"
+  done
+fi
+
+OUTPUT="$(PATH="$verifier_path" "$BASH" "$ROOT/scripts/verify-release-checksums.sh" "$WORK/SHA256SUMS.txt")"
 printf '%s\n' "$OUTPUT"
 
 if [[ -n "$EXPECTED_TOOL" && "$OUTPUT" != *"using $EXPECTED_TOOL"* ]]; then

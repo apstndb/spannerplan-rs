@@ -10,11 +10,11 @@ env:
 
 jobs:
   release-portability:
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
 
-      - name: Verify stock macOS checksum selection
+      - name: Verify macOS shasum fallback
         run: bash scripts/test-verify-release-checksums.sh shasum
 
       - name: Verify draft-release REST asset downloader
