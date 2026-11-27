@@ -2,6 +2,7 @@
 //! hanging-indent support. Port of `treerender/treerender.go`. See
 //! `DESIGN.md` §6.4.
 
+use alloc::borrow::Cow;
 use alloc::format;
 use alloc::string::String;
 use alloc::vec;
@@ -501,6 +502,24 @@ fn hanging_indent_padding(anchor_width: usize, has_children: bool, child_guide: 
     out
 }
 
+fn expand_line_tabs(mut line: &str) -> Cow<'_, str> {
+    const TAB_WIDTH: usize = 4; // Default in the Go reference renderer.
+    if !line.contains('\t') {
+        return Cow::Borrowed(line);
+    }
+
+    let mut expanded = String::with_capacity(line.len());
+    while let Some((segment, rest)) = line.split_once('\t') {
+        expanded.push_str(segment);
+        // Each segment starts at column zero or at the previous tab stop.
+        let spaces = TAB_WIDTH - string_width(segment) % TAB_WIDTH;
+        expanded.extend(core::iter::repeat_n(' ', spaces));
+        line = rest;
+    }
+    expanded.push_str(line);
+    Cow::Owned(expanded)
+}
+
 fn wrap_chunks(
     text: &str,
     first_budget: usize,
@@ -516,7 +535,10 @@ fn wrap_chunks(
             budget = continuation_budget;
             continue;
         }
-        let mut raw_line = raw_line;
+        // As in Go, compute tab stops from the logical line before breaking it
+        // into chunks. Truncation and slicing then use the same expanded text.
+        let expanded = expand_line_tabs(raw_line);
+        let mut raw_line = expanded.as_ref();
         while !raw_line.is_empty() {
             let mut raw_chunk = truncate(raw_line, budget);
             if raw_chunk.is_empty() {
@@ -729,6 +751,22 @@ mod tests {
     fn row_text_preserves_mismatched_lines() {
         assert_eq!(row("|  \n+- ", "root").text(), "|  root\n+- ");
         assert_eq!(row("+- ", "root\ncont").text(), "+- root\ncont");
+    }
+
+    #[test]
+    fn wrapping_tabs_matches_go_logical_tab_stops() {
+        let condition = WrapCondition::default();
+        let cases: &[(&str, &[&str])] = &[
+            ("\tX", &["", "X"]),
+            ("a\tbcd", &["a", "bcd"]),
+            ("你\tZ", &["你", "Z"]),
+            ("a\t\tb\tc", &["a", "", "b", "c"]),
+            ("a\tbcd\nxy\tZ", &["a", "bcd", "xy", "Z"]),
+        ];
+        for &(input, expected) in cases {
+            assert_eq!(wrap_chunks(input, 4, 4, &condition), expected, "{input:?}");
+        }
+        assert_eq!(wrap_chunks("\tX", 2, 3, &condition), ["", "  X"]);
     }
 
     #[test]
